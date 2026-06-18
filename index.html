@@ -90,7 +90,7 @@
   .sec-head h2{font-size:38px;font-weight:700}
   .sec-head p{color:var(--muted);font-size:17px;margin-top:14px}
 
-  .features{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+  .features{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
   .feat{background:var(--card);border:1px solid var(--card-bd);border-radius:var(--radius);padding:24px}
   .feat .ic{font-size:24px;margin-bottom:12px}
   .feat h3{font-size:17px;font-weight:600;font-family:Inter,"Noto Sans SC","Noto Sans JP",sans-serif}
@@ -193,7 +193,6 @@
       <p data-i18n="feat_p"></p>
     </div>
     <div class="features">
-      <div class="feat"><div class="ic">🎮</div><h3 data-i18n="feat1_t"></h3><p data-i18n="feat1_d"></p></div>
       <div class="feat"><div class="ic">🧩</div><h3 data-i18n="feat2_t"></h3><p data-i18n="feat2_d"></p></div>
       <div class="feat"><div class="ic">📚</div><h3 data-i18n="feat3_t"></h3><p data-i18n="feat3_d"></p></div>
       <div class="feat"><div class="ic">📸</div><h3 data-i18n="feat4_t"></h3><p data-i18n="feat4_d"></p></div>
@@ -267,13 +266,12 @@ const I18N = {
     cta_primary:"Get started", cta_ghost:"Browse the 13 skills",
     hero_meta:'<b>13 skills</b> · one install · works across <b>71 agents</b> · MIT licensed',
     feat_h2:"Why godot-skills",
-    feat_p:"Skills are portable Markdown playbooks your agent loads on demand — no plugin lock-in.",
-    feat1_t:"C# & GDScript", feat1_d:"Both languages are first-class. Every C#-only skill now spells out the GDScript path too — and keeps the C# tips.",
-    feat2_t:"Build scenes in code", feat2_d:"An agent has no editor, so it writes <code>.tscn</code> files in code — 2D, 3D, or mixed, with the right node family.",
+    feat_p:"Battle-tested playbooks for the parts of Godot that trip everyone up.",
+    feat2_t:"Build scenes in code", feat2_d:"Write <code>.tscn</code> files straight in code — 2D, 3D, or mixed, always with the right node family.",
     feat3_t:"Version-aware API", feat3_d:"The API lookup detects your Godot version and language, then generates a matching reference on demand.",
     feat4_t:"Closes the loop", feat4_d:"Headless screenshot and capture skills let the agent <em>look</em> at the result instead of guessing.",
     skills_h2:"The skills",
-    skills_p:"One <code>npx skills add</code> brings them all. Most also fire automatically from their description.",
+    skills_p:"One <code>npx skills add</code> and all 13 are in place.",
     install_h2:"Install",
     install_p:"Pick your agent. Both paths deliver the same 13 skills.",
     panel1_h3:'🛠️ Any agent <span class="sub">(via the skills CLI)</span>',
@@ -313,13 +311,12 @@ const I18N = {
     cta_primary:"开始上手", cta_ghost:"看看这 13 个技能",
     hero_meta:'<b>13 个技能</b> · 一行装好 · 兼容 <b>71 种智能体</b> · MIT 许可',
     feat_h2:"为什么用 godot-skills",
-    feat_p:"技能就是可移植的 Markdown 手册，智能体用到才加载，不被任何插件绑死。",
-    feat1_t:"C# 与 GDScript", feat1_d:"两种语言都是主角。原本只讲 C# 的技能，如今也写全了 GDScript 的做法，同时保留 C# 专属提示。",
-    feat2_t:"用代码搭场景", feat2_d:"智能体没有编辑器，于是用代码写出 <code>.tscn</code>——2D、3D 或混合，都挑对节点家族。",
+    feat_p:"把 Godot 里最容易翻车的环节，做成经过实战的操作手册。",
+    feat2_t:"用代码搭场景", feat2_d:"直接用代码写出 <code>.tscn</code>——2D、3D 或混合，都挑对节点家族。",
     feat3_t:"随版本而变的 API", feat3_d:"API 查询会认出你的 Godot 版本与语言，再按需生成对应的参考资料。",
     feat4_t:"自己闭环验证", feat4_d:"无头截图与录制技能，让智能体亲眼<em>看</em>结果，而不是靠猜。",
     skills_h2:"技能一览",
-    skills_p:"一句 <code>npx skills add</code> 全部装好，多数还会按描述自动触发。",
+    skills_p:"一句 <code>npx skills add</code>，13 个技能全部就位。",
     install_h2:"安装",
     install_p:"挑你用的智能体，两条路装的是同一批 13 个技能。",
     panel1_h3:'🛠️ 任意智能体 <span class="sub">（经 skills CLI）</span>',
@@ -359,13 +356,12 @@ const I18N = {
     cta_primary:"はじめる", cta_ghost:"13 個のスキルを見る",
     hero_meta:'<b>13 スキル</b> · 一度の導入 · <b>71 種のエージェント</b>に対応 · MIT ライセンス',
     feat_h2:"godot-skills を選ぶ理由",
-    feat_p:"スキルは持ち運べる Markdown の手引き。エージェントが必要なときだけ読み込み、プラグインに縛られません。",
-    feat1_t:"C# と GDScript", feat1_d:"どちらの言語も主役。これまで C# 専用だったスキルも GDScript の手順を併記し、C# 固有のコツも残しています。",
-    feat2_t:"コードでシーンを組む", feat2_d:"エージェントにエディタはないので、<code>.tscn</code> をコードで書き出します——2D・3D・混在、いずれも適切なノード系統で。",
+    feat_p:"Godot でつまずきやすいところを、実戦で鍛えた手順書に。",
+    feat2_t:"コードでシーンを組む", feat2_d:"<code>.tscn</code> をコードで直接書き出し——2D・3D・混在、いずれも適切なノード系統で。",
     feat3_t:"バージョンを意識した API", feat3_d:"API 参照はあなたの Godot バージョンと言語を見分け、必要に応じて対応する資料を生成します。",
     feat4_t:"自分で検証まで", feat4_d:"ヘッドレスのスクショ・録画スキルで、エージェントが結果を推測せず実際に<em>確認</em>します。",
     skills_h2:"スキル一覧",
-    skills_p:"<code>npx skills add</code> 一発で全部導入。多くは説明文から自動で起動します。",
+    skills_p:"<code>npx skills add</code> 一発で、13 スキルがすべて揃います。",
     install_h2:"導入",
     install_p:"エージェントを選んでください。どちらでも同じ 13 スキルが入ります。",
     panel1_h3:'🛠️ どのエージェントでも <span class="sub">（skills CLI 経由）</span>',
