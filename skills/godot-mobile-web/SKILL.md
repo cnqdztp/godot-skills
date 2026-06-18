@@ -1,24 +1,21 @@
 ---
 name: godot-mobile-web
-author: cnzangtianpei@gmail.com
+metadata:
+  author: cnzangtianpei@gmail.com
 description: >-
-  GDScript-side conventions and hard-won gotchas for shipping a Godot 4 2D game
-  to Web (HTML5) and mobile — especially a portrait-locked character / desktop-pet
-  app. Covers the web-export traps that only bite after deploy (audio won't
-  autoplay until a user gesture; the on-screen keyboard needs an export flag;
-  real HTTP streaming needs JavaScriptBridge fetch, not HTTPRequest), doing a
-  landscape screen inside a portrait-locked viewport (rotate the subtree, never
-  gate on aspect ratio), scene-transition discipline (always cover→hold→reveal,
-  full-screen flows are their own scene), cel-style 2D rendering (seamless
-  horizontal scroll with one wrapped quad + texture_repeat, and grounding a pet's
-  shadow at the sprite's opaque-pixel feet), GDScript coroutine fire-and-forget
-  to overlap a download with an animation, downloadable character/asset pack
-  pipelines (res:// vs user:// precedence), and closing the visual-QA loop
-  headlessly. Use this whenever a Godot 4 GDScript project targets the web build
-  or a phone, is portrait-locked, is a 2D pet/widget/character app, or shows the
-  signature web symptoms: silent audio, an un-typeable text field on mobile web,
-  a visible seam in a scrolling background, a shadow floating off the character,
-  or an animation that gets skipped because a network call ran in front of it.
+  GDScript conventions and gotchas for shipping a Godot 4 2D game to Web (HTML5)
+  and mobile — especially a portrait-locked character / desktop-pet app. Covers
+  web-export traps that bite only after deploy (audio won't autoplay until a user
+  gesture; the on-screen keyboard needs an export flag; real streaming needs
+  JavaScriptBridge fetch, not HTTPRequest); a landscape screen inside a
+  portrait-locked viewport (rotate the subtree, don't gate on aspect ratio);
+  scene-transition discipline (cover→hold→reveal); cel-style 2D rendering
+  (seamless scroll via one wrapped quad + texture_repeat; shadow grounded at the
+  sprite's opaque-pixel feet); GDScript coroutine fire-and-forget to overlap a
+  download with an animation; and downloadable character/asset packs (res:// vs
+  user://). Use when a Godot 4 GDScript project targets web or mobile, is
+  portrait-locked, or is a 2D pet/widget, or shows symptoms like silent audio, an
+  un-typeable field on mobile web, a background seam, or a shadow off the pet.
 ---
 
 # Godot 4 — GDScript for Web & Mobile (portrait pets)

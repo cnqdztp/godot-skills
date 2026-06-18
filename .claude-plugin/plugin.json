@@ -13,5 +13,6 @@
   "repository": "https://github.com/cnqdztp/godot-skills",
   "license": "MIT",
   "keywords": ["godot", "gdscript", "gamedev", "web-export", "mobile"],
+  "skills": "./skills/",
   "defaultEnabled": true
 }

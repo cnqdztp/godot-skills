@@ -1,6 +1,7 @@
 ---
 name: godot-passthrough-game
-author:cnzangtianpei@gmail.com
+metadata:
+  author: cnzangtianpei@gmail.com
 description: >-
   Guidance for building and debugging Godot 4 transparent desktop-widget games —
   "passthrough games" such as desktop pets, idle widgets, and screen-edge
@@ -11,8 +12,8 @@ description: >-
   — and especially when debugging its signature failure modes: clicks not
   registering, the whole window swallowing or passing every click through (often
   Windows-only), or a transparent window rendering as a solid black rectangle. It
-  also covers the platform traps these projects always hit — DPI scaling, CJK
-  text wrapping, window and addon setup. Consult it before writing or changing
+  also covers the platform traps these projects hit — DPI scaling, CJK text
+  wrapping, window/addon setup. Consult it before writing or changing
   any transparent-window, click-through, or passthrough code in Godot: the
   engine's built-in passthrough is broken on Windows and the failure modes are
   non-obvious and platform-specific.

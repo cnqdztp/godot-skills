@@ -1,21 +1,31 @@
 # godot-skills
 
-A collection of [Claude Code](https://code.claude.com) **Skills** for building games in
-**Godot 4** — packaged as a plugin marketplace. **C# (.NET) and GDScript are both
-first-class**: every skill that used to be C#-only now documents the GDScript path too, while
-keeping the C#-specific tips.
+A collection of **Agent Skills** for building games in **Godot 4** — in the open
+[Agent Skills](https://agentskills.io) format (`skills/<name>/SKILL.md`), portable across
+agents, and also exposed as a [Claude Code](https://code.claude.com) plugin marketplace.
+**C# (.NET) and GDScript are both first-class**: every skill that used to be C#-only now
+documents the GDScript path too, while keeping the C#-specific tips.
 
 ## Install
 
-In Claude Code:
+**Any agent** (Claude Code, Cursor, Codex, Gemini CLI, … — via the cross-agent
+[`skills`](https://github.com/vercel-labs/skills) CLI):
+
+```bash
+npx skills add cnqdztp/godot-skills            # all skills, into your detected agents
+npx skills add cnqdztp/godot-skills --list     # preview them first
+npx skills add cnqdztp/godot-skills@godot-mobile-web -g   # one skill, global
+```
+
+**Claude Code** (as a plugin) — alternatively:
 
 ```
 /plugin marketplace add cnqdztp/godot-skills
 /plugin install godot@godot-skills
 ```
 
-That installs one plugin, `godot`, bundling all the skills below. They're invoked as
-`/godot:<skill-name>` and most also auto-trigger from their `description` when relevant.
+Either way you get all the skills below. Under Claude Code they're invoked as
+`/godot:<skill-name>`; most also auto-trigger from their `description` when relevant.
 
 ## Skills
 

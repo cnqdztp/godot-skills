@@ -11,7 +11,7 @@
     {
       "name": "godot",
       "displayName": "Godot Skills",
-      "source": "./plugins/godot",
+      "source": ".",
       "description": "Bundle of Godot 4 skills (C# and GDScript both first-class): GDScript web/mobile export and portrait-pet conventions, engine quirks, UI authoring, version-aware API lookup, asset generation, scaffolding, scene building, and headless visual QA.",
       "version": "1.0.0",
       "author": { "name": "cnzang", "email": "cnzangtianpei@gmail.com" },
