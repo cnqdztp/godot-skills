@@ -164,6 +164,13 @@ Complete architecture reference. Always written in full, even for incremental up
 
 ## Dimension: {2D or 3D}
 
+Decide the world's dimension and node family BEFORE listing scenes — pick by responsibility (see godot-scene-builder's "Choosing the node family"):
+- **2D game world** → roots `Node2D` / `CharacterBody2D` / `Area2D`; art `Sprite2D`/`AnimatedSprite2D`; tiles `TileMapLayer`; camera `Camera2D`.
+- **3D game world** → roots `Node3D` / `CharacterBody3D`; art `MeshInstance3D` / GLB; camera `Camera3D`.
+- **UI / HUD** (either dimension) → `Control` on a `CanvasLayer` above the world (see godot-ui-tscn).
+
+The worked STRUCTURE.md below is a **3D** example; a **2D** project is identical with the 2D roots — e.g. Main root `Node2D`, Player root `CharacterBody2D`, scripts extending `CharacterBody2D`, art `Sprite2D`.
+
 ## Input Actions
 
 | Action | Keys |
@@ -393,7 +400,7 @@ For pause menus, set the CanvasLayer to run during pause: `ProcessMode = Process
 
 ## Architecture Rules
 
-1. **Explicit 2D or 3D** — never mix dimensions in the same hierarchy.
+1. **Explicit 2D or 3D** — never mix dimensions in one hierarchy; when a scene needs both, render the secondary family in a `SubViewport` and composite it back (see godot-scene-builder). UI is `Control` on a `CanvasLayer` above the world.
 2. **Declare all input actions** — anything used by scripts must appear in input table and project.godot.
 3. **Signal contracts** — if script A emits signal X, receivers must list it in the signal map.
 

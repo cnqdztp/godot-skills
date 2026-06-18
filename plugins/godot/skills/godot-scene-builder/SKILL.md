@@ -1,12 +1,38 @@
 ---
 name: godot-scene-builder
 description: |
-  Generate Godot 4 .tscn scene files programmatically with a headless SceneTree builder script (C# / .NET or GDScript): build the node hierarchy in code, set the Owner chain, validate, and Pack/save. Use when you need to create or rebuild a scene file rather than hand-authoring it in the editor.
+  Generate any Godot 4 .tscn scene file programmatically with a headless SceneTree builder script (C# / .NET or GDScript): build the node hierarchy in code, set the Owner chain, validate, and Pack/save. An agent has no Godot editor, so a builder script is the ONLY way to author or rebuild a scene — use this for EVERY scene type: 2D game scenes (Node2D, Sprite2D, AnimatedSprite2D, CharacterBody2D/Area2D + CollisionShape2D, Camera2D, TileMapLayer), 3D game scenes (Node3D, MeshInstance3D, physics bodies, Camera3D, GLB), and mixed scenes. For the Control/UI layer specifically, pair with godot-ui-tscn.
 ---
 
 # Scene Generation
 
 Scene builders are scripts that run headless in Godot 4 to produce `.tscn` files programmatically. They are NOT runtime scripts — they run once at build-time and exit.
+
+## Choosing the node family (the #1 decision — get this right first)
+
+Before building any scene, pick the node family by **RESPONSIBILITY**, not by "is it on screen". This is how shipped Godot games actually decide (verified across a C# card game and a GDScript point-and-click):
+
+- **Control family** — `Control`, the `*Container` nodes, `Panel`, `TextureRect`, `NinePatchRect`, `Label`/`RichTextLabel`, `ColorRect`, `CanvasGroup`. Use for **anything that anchors/lays out, is read or clicked, or composes other nodes.** This is the default for ALL UI (menus, HUD, panels, popups, list rows), and in layout-driven 2D games even the board/card/entity *wrappers* are often Control. Static art *inside* a Control layout is **`TextureRect`** (never `Sprite2D`); stretchable frames are `NinePatchRect`; full-screen dimmers/shader rects are `ColorRect`.
+- **Node2D family** — `Node2D`, `Sprite2D`, `AnimatedSprite2D`, `GPUParticles2D`, `Line2D`, `Marker2D`, plus `CharacterBody2D`/`Area2D`/`CollisionShape2D`, `Camera2D`, `TileMapLayer`. Use for **free-transform world content**: art you place/move/rotate in world space, skeletal animation (e.g. Spine), particle/VFX rigs, tile worlds, and 2D physics/movement. Use `Sprite2D` (not `TextureRect`) only when the art owns its own transform.
+- **Node3D family** — `Node3D`, `MeshInstance3D`, `Camera3D`, the 3D physics/light nodes. Use when the game has a real 3D space.
+
+**Decisive test:** does it hit-test / anchor / hold text? → **Control**. Is it transformed-animated art, particles, Spine, a tile world, or a moving/colliding body? → **Node2D**. Does it live in a 3D space? → **Node3D**.
+
+**Split entities that need both.** When one on-screen thing needs layout/logic/HUD AND free-transform art (e.g. a combatant), build it as TWO nodes — a Control logic/hitbox/HUD node and a separate `Node2D` art node (Sprite/Spine) — joined at runtime and bridged by **`Marker2D`** anchor points the art scene exposes (real pattern: a Control `creature.tscn` + a `Node2D` `creature_visuals/*.tscn` exposing `CenterPos`/`IntentPos` markers).
+
+**Quarantine the non-primary family in a `SubViewport`.** Do NOT parent 3D nodes under 2D/Control nodes or vice-versa. If a mostly-2D game needs a 3D flourish, render the 3D rig in a `SubViewport` and composite it back as a `Sprite2D`/`TextureRect`; if a 3D game needs a 2D mini-world (an in-game screen/map), render it in a `SubViewport`. **UI always sits on a `CanvasLayer` above the world** so it ignores the game camera.
+
+**Root-node conventions (observed in shipped games):**
+
+| Scene kind | Root |
+|---|---|
+| game world — free placement / physics / tiles | `Node2D` (2D) or `Node3D` (3D) |
+| per-screen / per-mode manager in a UI-driven game | `Control` |
+| HUD / menu / panel / popup / list row | `Control` (on a `CanvasLayer` overlay) |
+| reusable art rig (sprite / Spine / VFX) | `Node2D` |
+| app / bootstrap root | `Node`/`Control` (2D game) or `Node3D` (3D game) |
+
+When in doubt for a **game world**, root it `Node2D`/`Node3D`; for **anything the player reads or clicks**, root it `Control`. A Control-heavy UI is correct — the mistake is putting *free-transform gameplay art* into Control containers (a `Container` overwrites its children's `position`/`scale` every relayout, so world objects can't be freely placed — see godot-quirks).
 
 ## Language: C# (.NET) or GDScript?
 
@@ -141,6 +167,47 @@ SetOwnerOnNewNodes(trackContainer, root);  // trackContainer itself has NO owner
 
 ## Common Node Compositions
 
+**2D game world** — a `Node2D` root with a moving/colliding actor, a frame-animated prop, a trigger area, and an anchor. This is the copyable template for a 2D game scene; for the HUD over it, build a separate `Control` tree on a `CanvasLayer` (see godot-ui-tscn).
+
+**(GDScript)**
+```gdscript
+var world := Node2D.new()
+world.name = "World"
+
+var player := CharacterBody2D.new()           # moving, colliding actor
+player.name = "Player"
+var sprite := Sprite2D.new()                  # art that owns its transform → Sprite2D, not TextureRect
+sprite.texture = load("res://art/player.png")
+player.add_child(sprite)
+var col := CollisionShape2D.new()
+var shape := RectangleShape2D.new(); shape.size = Vector2(24, 32)
+col.shape = shape
+player.add_child(col)
+var cam := Camera2D.new()                      # child of the actor → follows it
+cam.zoom = Vector2(2, 2)
+player.add_child(cam)
+world.add_child(player)
+
+var coin := AnimatedSprite2D.new()             # frame animation
+coin.sprite_frames = load("res://art/coin_frames.tres")
+coin.position = Vector2(120, 0)
+world.add_child(coin)
+
+var trigger := Area2D.new()                    # clickable / overlap region
+var tcol := CollisionShape2D.new()
+var circle := CircleShape2D.new(); circle.radius = 16.0
+tcol.shape = circle
+trigger.add_child(tcol)
+world.add_child(trigger)
+
+var spawn := Marker2D.new()                    # anchor point (NOT the deprecated Position2D)
+spawn.name = "SpawnPoint"
+spawn.position = Vector2(0, -40)
+world.add_child(spawn)
+```
+
+**(C# / .NET)** — same structure: `new Node2D()` root; `Sprite2D.Texture = GD.Load<Texture2D>(...)`; `CharacterBody2D` with a `CollisionShape2D` whose `Shape = new RectangleShape2D { Size = new Vector2(24,32) }`; `AnimatedSprite2D.SpriteFrames = GD.Load<SpriteFrames>(...)`; `Area2D` + `CircleShape2D`; `Camera2D` as a child of the actor; `Marker2D` anchors. Tile worlds use a `TileMapLayer` (Godot 4.3+) with a `TileSet`.
+
 **3D Physics Object:**
 ```csharp
 var body = new RigidBody3D();
@@ -153,7 +220,7 @@ body.AddChild(collision);
 body.AddChild(mesh);
 ```
 
-**Camera Rig:**
+**3D Camera Rig:**
 ```csharp
 var pivot = new Node3D();
 var camera = new Camera3D();
@@ -462,6 +529,37 @@ func _initialize() -> void:
     _pack_and_save(root, "res://scenes/player.tscn")
 ```
 
+Concrete **2D** worked example — same flow, a `Node2D` world root with 2D nodes. **(GDScript):**
+```gdscript
+extends SceneBuilderBase
+
+func _initialize() -> void:
+    var root := Node2D.new()
+    root.name = "Level"
+
+    var player := CharacterBody2D.new()
+    player.name = "Player"
+    var sprite := Sprite2D.new()
+    sprite.name = "Sprite"
+    sprite.texture = load("res://art/player.png")
+    player.add_child(sprite)
+    var col := CollisionShape2D.new()
+    col.name = "Collision"
+    var shape := RectangleShape2D.new(); shape.size = Vector2(24, 32)
+    col.shape = shape
+    player.add_child(col)
+    var cam := Camera2D.new()
+    cam.name = "Camera"
+    player.add_child(cam)
+    root.add_child(player)
+
+    # set_script() does NOT dispose anything — root stays valid:
+    player.set_script(load("res://scripts/player.gd"))
+
+    _pack_and_save(root, "res://scenes/level.tscn")
+```
+**(C# / .NET):** identical structure with the temp-parent dance for the root (`SetScript()` disposes the wrapper, exactly as the 3D Player example) but with `Node2D`/`CharacterBody2D`/`Sprite2D`/`CollisionShape2D`/`RectangleShape2D`/`Camera2D`.
+
 > No `dotnet build` is needed for a GDScript builder — run it straight from source (see Build order below).
 
 ### CRITICAL: Build order
@@ -482,7 +580,7 @@ Scene builders produce `.tscn` files only. They must NOT contain:
 - Asset loading: `[C# only]` use `GD.Load<T>()` (no `preload()` equivalent in C#). `(GDScript)` use runtime `load()` — do NOT use `preload()`, which resolves at parse time and is unnecessary in a build-time script
 - Do NOT connect signals at build-time — scripts aren't instantiated yet. Signal connections belong in runtime scripts' `_Ready()` method
 - **No spatial methods in `_Initialize()`** — `LookAt()`, `ToGlobal()`, etc. fail because nodes aren't in the tree yet. Use `RotationDegrees` or compute transforms manually. In runtime scripts (`_Ready()`, `_Process()`), **always use `LookAt()` to orient cameras and objects toward targets** — it's the correct tool there. Manual rotation math is error-prone and unnecessary.
-- **2D/3D consistency** — never mix dimensions in the same scene hierarchy.
+- **Don't directly mix 2D and 3D in one hierarchy** — never parent `Node3D` under `Node2D`/`Control` (or vice-versa). When a scene needs both, render the secondary family inside a `SubViewport` and composite it back: a `SubViewportContainer`/`TextureRect` to show 3D inside a 2D/UI scene, or a `Sprite2D`/`TextureRect` fed by the SubViewport's texture. UI always goes on a `CanvasLayer` above the world (see "Choosing the node family").
 
 ## Environment & Lighting (3D Scenes)
 
@@ -513,7 +611,18 @@ sun.RotationDegrees = new Vector3(-45, -30, 0);
 root.AddChild(sun);
 ```
 
-## CSG for Rapid Prototyping
+## 2D world extras (the 2D peers of the 3D nodes above)
+
+For a `Node2D` world, the lighting / particle / scroll equivalents:
+- **Lighting & atmosphere:** `CanvasModulate` (global tint), `PointLight2D` / `DirectionalLight2D` + `LightOccluder2D`.
+- **Particles & trails:** `GPUParticles2D` (or `CPUParticles2D`), `Line2D`.
+- **Camera:** `Camera2D` with `Zoom`, `LimitLeft/Top/Right/Bottom`, and `PositionSmoothingEnabled` for follow.
+- **Scrolling backdrops:** `Parallax2D` (Godot 4.3+) or `ParallaxBackground` + `ParallaxLayer`.
+- **Tiles:** `TileMapLayer` + `TileSet` (one layer per node in 4.3+).
+
+Keep these in the `Node2D` world tree, not in Control containers.
+
+## CSG for Rapid Prototyping (3D)
 
 CSG nodes generate collision automatically — no separate CollisionShape needed:
 
