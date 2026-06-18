@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "godot-skills",
+  "owner": {
+    "name": "cnzang",
+    "email": "cnzangtianpei@gmail.com"
+  },
+  "description": "A collection of Godot 4 skills for Claude Code (C# and GDScript both first-class) — engine quirks, UI-as-tscn, version-aware API lookup, asset generation, headless QA, scaffolding, and GDScript web/mobile/portrait-pet conventions.",
+  "version": "1.0.0",
+  "plugins": [
+    {
+      "name": "godot",
+      "displayName": "Godot Skills",
+      "source": "./plugins/godot",
+      "description": "Bundle of Godot 4 skills (C# and GDScript both first-class): GDScript web/mobile export and portrait-pet conventions, engine quirks, UI authoring, version-aware API lookup, asset generation, scaffolding, scene building, and headless visual QA.",
+      "version": "1.0.0",
+      "author": { "name": "cnzang", "email": "cnzangtianpei@gmail.com" },
+      "homepage": "https://github.com/cnqdztp/godot-skills",
+      "repository": "https://github.com/cnqdztp/godot-skills",
+      "license": "MIT",
+      "keywords": ["godot", "gdscript", "gamedev", "web-export", "mobile", "skills"],
+      "category": "development"
+    }
+  ]
+}
