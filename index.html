@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>godot-skills</title>
+<meta name="description" content="" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#17132e; --bg2:#1d1740; --indigo:#241c52;
+    --card:rgba(255,255,255,.045); --card-bd:rgba(255,255,255,.09);
+    --blue:#4d8fd6; --blue-2:#69a8ea; --godot:#478cbf;
+    --pink:#ff6b81; --green:#7ee0a8;
+    --text:#f4f2ff; --muted:#b3acd6; --muted-2:#8b83b4;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:Inter,"Noto Sans SC","Noto Sans JP",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    line-height:1.65; -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;text-decoration:none}
+  h1,h2,h3{font-family:Poppins,"Noto Sans SC","Noto Sans JP",Inter,sans-serif;margin:0;line-height:1.15;letter-spacing:-.02em}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+  .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+
+  /* nav */
+  header{position:sticky;top:0;z-index:50;backdrop-filter:blur(12px);
+    background:rgba(23,19,46,.55);border-bottom:1px solid rgba(255,255,255,.06)}
+  .nav{display:flex;align-items:center;gap:22px;height:68px}
+  .brand{display:flex;align-items:center;gap:11px;font-family:Poppins;font-weight:800;font-size:19px}
+  .brand .logo{width:34px;height:34px;flex:0 0 auto}
+  .nav .links{display:flex;gap:24px;margin-left:6px}
+  .nav .links a{color:var(--muted);font-weight:500;font-size:15px;transition:color .15s}
+  .nav .links a:hover{color:#fff}
+  .nav .spacer{flex:1}
+  .pill{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:9px 18px;
+    font-weight:600;font-size:14.5px;font-family:Poppins;transition:transform .12s,filter .15s}
+  .pill:hover{transform:translateY(-1px);filter:brightness(1.07)}
+  .pill-pink{background:var(--pink);color:#3a0d16}
+  .pill-ghost{border:1px solid rgba(255,255,255,.18);color:#fff}
+
+  /* language switch */
+  .lang-switch{display:flex;gap:2px;background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.1);border-radius:999px;padding:3px}
+  .lang-btn{cursor:pointer;border:0;background:transparent;color:var(--muted);
+    font-family:Poppins;font-weight:600;font-size:13px;padding:5px 12px;border-radius:999px;transition:.15s}
+  .lang-btn:hover{color:#fff}
+  .lang-btn.active{background:var(--blue);color:#fff}
+
+  /* hero */
+  .hero{position:relative;overflow:hidden;isolation:isolate}
+  .hero::before{content:"";position:absolute;inset:0;z-index:-2;
+    background:url('assets/hero-bg.jpg') center 30%/cover no-repeat}
+  .hero::after{content:"";position:absolute;inset:0;z-index:-1;
+    background:linear-gradient(180deg, rgba(38,28,86,.62) 0%, rgba(23,17,46,.82) 55%, var(--bg) 100%)}
+  .hero-inner{padding:104px 0 104px;text-align:center}
+  .hero h1{font-size:68px;font-weight:800;margin:0 auto;max-width:15ch}
+  .hero h1 .accent{color:var(--blue-2)}
+  .hero .sub{font-size:20px;color:#e7e3fb;max-width:64ch;margin:24px auto 0;font-weight:400}
+
+  .cmd{display:inline-flex;align-items:center;gap:14px;margin:36px auto 0;
+    background:rgba(12,9,26,.62);border:1px solid rgba(255,255,255,.14);border-radius:12px;
+    padding:13px 14px 13px 20px;backdrop-filter:blur(6px)}
+  .cmd code{font-size:16px;color:#eafff3}
+  .cmd .dollar{color:var(--muted-2)}
+  .copy{cursor:pointer;border:0;background:var(--blue);color:#fff;font-family:Poppins;font-weight:600;
+    font-size:13.5px;border-radius:8px;padding:8px 14px;transition:filter .15s;white-space:nowrap}
+  .copy:hover{filter:brightness(1.1)}
+  .copy.done{background:var(--green);color:#0d2b1b}
+
+  .cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:30px}
+  .btn{display:inline-flex;align-items:center;gap:10px;border-radius:12px;padding:14px 24px;
+    font-family:Poppins;font-weight:600;font-size:16px;transition:transform .12s,filter .15s}
+  .btn:hover{transform:translateY(-2px)}
+  .btn-primary{background:var(--blue);color:#fff}
+  .btn-primary:hover{filter:brightness(1.08)}
+  .btn-ghost{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:#fff}
+  .meta{margin-top:24px;color:var(--muted);font-size:14.5px}
+  .meta b{color:#fff;font-weight:600}
+
+  /* sections */
+  section{padding:84px 0}
+  .sec-head{text-align:center;max-width:660px;margin:0 auto 50px}
+  .sec-head h2{font-size:38px;font-weight:700}
+  .sec-head p{color:var(--muted);font-size:17px;margin-top:14px}
+
+  .features{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+  .feat{background:var(--card);border:1px solid var(--card-bd);border-radius:var(--radius);padding:24px}
+  .feat .ic{font-size:24px;margin-bottom:12px}
+  .feat h3{font-size:17px;font-weight:600;font-family:Inter,"Noto Sans SC","Noto Sans JP",sans-serif}
+  .feat p{color:var(--muted);font-size:14.5px;margin:8px 0 0}
+
+  #skills{background:linear-gradient(180deg,var(--bg),var(--bg2))}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .card{background:var(--card);border:1px solid var(--card-bd);border-radius:var(--radius);
+    padding:22px;transition:border-color .15s,transform .12s,background .15s}
+  .card:hover{border-color:rgba(105,168,234,.5);transform:translateY(-3px);background:rgba(255,255,255,.06)}
+  .card .name{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:15px;color:#fff}
+  .card .desc{color:var(--muted);font-size:14px;margin:10px 0 0}
+
+  /* install */
+  .install-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;max-width:920px;margin:0 auto}
+  .panel{background:var(--card);border:1px solid var(--card-bd);border-radius:var(--radius);padding:26px}
+  .panel h3{font-family:Poppins,"Noto Sans SC","Noto Sans JP",sans-serif;font-size:18px;font-weight:600;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+  .panel h3 .sub{font-weight:400;color:var(--muted-2);font-size:13px}
+  .panel .lede{color:var(--muted);font-size:14.5px;margin:8px 0 16px}
+  pre{margin:0;background:rgba(10,8,22,.7);border:1px solid rgba(255,255,255,.08);
+    border-radius:10px;padding:16px;overflow-x:auto}
+  pre code{font-family:'JetBrains Mono',monospace;font-size:13.5px;color:#eafff3;line-height:1.7}
+  .cmt{color:var(--muted-2)}
+
+  footer{border-top:1px solid rgba(255,255,255,.07);padding:40px 0;color:var(--muted);font-size:14.5px}
+  .foot{display:flex;align-items:center;gap:18px;flex-wrap:wrap;justify-content:space-between}
+  .foot a{color:var(--blue-2);font-weight:500}
+
+  @media(max-width:900px){
+    .features{grid-template-columns:repeat(2,1fr)}
+    .grid{grid-template-columns:1fr 1fr}
+    .install-grid{grid-template-columns:1fr}
+    .nav .links{display:none}
+    .hero h1{font-size:46px}
+    .hero .sub{font-size:17px}
+  }
+  @media(max-width:560px){
+    .grid,.features{grid-template-columns:1fr}
+    .hero h1{font-size:38px}
+    .cmd{flex-direction:column;align-items:stretch}
+    .brand span.txt{display:none}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="#top">
+      <svg class="logo" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="4" y="9" width="40" height="30" rx="9" fill="#478cbf"/>
+        <circle cx="17" cy="24" r="5" fill="#fff"/><circle cx="31" cy="24" r="5" fill="#fff"/>
+        <circle cx="17" cy="24" r="2.2" fill="#17132e"/><circle cx="31" cy="24" r="2.2" fill="#17132e"/>
+        <rect x="22.5" y="2" width="3" height="8" rx="1.5" fill="#69a8ea"/>
+        <circle cx="24" cy="3" r="3" fill="#7ee0a8"/>
+      </svg>
+      <span class="txt">godot-skills</span>
+    </a>
+    <nav class="links">
+      <a href="#features" data-i18n="nav_why">Why</a>
+      <a href="#skills" data-i18n="nav_skills">Skills</a>
+      <a href="#install" data-i18n="nav_install">Install</a>
+      <a href="https://agentskills.io" target="_blank" rel="noopener" data-i18n="nav_format">Format</a>
+    </nav>
+    <div class="spacer"></div>
+    <div class="lang-switch" role="group" aria-label="Language">
+      <button class="lang-btn" data-lang="zh" onclick="setLang('zh')">中</button>
+      <button class="lang-btn" data-lang="en" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" data-lang="ja" onclick="setLang('ja')">日</button>
+    </div>
+    <a class="pill pill-pink" href="https://github.com/cnqdztp/godot-skills" target="_blank" rel="noopener" data-i18n="nav_star">★ Star on GitHub</a>
+  </div>
+</header>
+
+<main id="top" class="hero">
+  <div class="wrap hero-inner">
+    <h1 data-i18n="h1">Build <span class="accent">Godot</span> games with your AI agent</h1>
+    <p class="sub" data-i18n="sub"></p>
+
+    <div class="cmd">
+      <code><span class="dollar">$ </span><span id="cmd">npx skills add cnqdztp/godot-skills</span></code>
+      <button class="copy" id="copyBtn" data-i18n="copy" onclick="copyCmd()">Copy</button>
+    </div>
+
+    <div class="cta">
+      <a class="btn btn-primary" href="#install">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span data-i18n="cta_primary">Get started</span>
+      </a>
+      <a class="btn btn-ghost" href="#skills" data-i18n="cta_ghost">Browse the 13 skills</a>
+    </div>
+    <p class="meta" data-i18n="hero_meta"></p>
+  </div>
+</main>
+
+<section id="features">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2 data-i18n="feat_h2">Why godot-skills</h2>
+      <p data-i18n="feat_p"></p>
+    </div>
+    <div class="features">
+      <div class="feat"><div class="ic">🎮</div><h3 data-i18n="feat1_t"></h3><p data-i18n="feat1_d"></p></div>
+      <div class="feat"><div class="ic">🧩</div><h3 data-i18n="feat2_t"></h3><p data-i18n="feat2_d"></p></div>
+      <div class="feat"><div class="ic">📚</div><h3 data-i18n="feat3_t"></h3><p data-i18n="feat3_d"></p></div>
+      <div class="feat"><div class="ic">📸</div><h3 data-i18n="feat4_t"></h3><p data-i18n="feat4_d"></p></div>
+    </div>
+  </div>
+</section>
+
+<section id="skills">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2 data-i18n="skills_h2">The skills</h2>
+      <p data-i18n="skills_p"></p>
+    </div>
+    <div class="grid" id="skillGrid"></div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2 data-i18n="install_h2">Install</h2>
+      <p data-i18n="install_p"></p>
+    </div>
+    <div class="install-grid">
+      <div class="panel">
+        <h3 data-i18n="panel1_h3"></h3>
+        <p class="lede" data-i18n="panel1_lede"></p>
+        <pre><code><span class="cmt" data-i18n="c_all"></span>
+npx skills add cnqdztp/godot-skills
+
+<span class="cmt" data-i18n="c_preview"></span>
+npx skills add cnqdztp/godot-skills --list
+npx skills add cnqdztp/godot-skills@godot-mobile-web -g</code></pre>
+      </div>
+      <div class="panel">
+        <h3 data-i18n="panel2_h3"></h3>
+        <p class="lede" data-i18n="panel2_lede"></p>
+        <pre><code>/plugin marketplace add cnqdztp/godot-skills
+/plugin install godot@godot-skills
+
+<span class="cmt" data-i18n="c_invoke"></span>
+/godot:godot-scene-builder</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot">
+    <span data-i18n="footer_l"></span>
+    <span data-i18n="footer_r"></span>
+  </div>
+</footer>
+
+<script>
+const SKILL_NAMES = [
+  "godot-mobile-web","godot-api","godot-quirks","godot-ui-tscn","godot-ui-foundation",
+  "godot-scene-builder","godot-scaffold","godot-asset-gen","godot-automatic-ui-qa",
+  "godot-capture","godot-test-harness","godot-android-export","godot-passthrough-game"
+];
+
+const I18N = {
+  en: {
+    _name:"English",
+    title:"godot-skills — Agent Skills for building Godot 4 games",
+    meta_desc:"Open Agent Skills for building Godot 4 games. Install in any agent with npx skills add, or as a Claude Code plugin.",
+    nav_why:"Why", nav_skills:"Skills", nav_install:"Install", nav_format:"Format", nav_star:"★ Star on GitHub",
+    h1:'Build <span class="accent">Godot</span> games with your AI agent',
+    sub:"A collection of Agent Skills that teach Claude, Cursor, Codex and friends how to build real Godot 4 games — engine quirks, scene building, UI, asset generation, headless QA, and more.",
+    copy:"Copy", copied:"Copied!",
+    cta_primary:"Get started", cta_ghost:"Browse the 13 skills",
+    hero_meta:'<b>13 skills</b> · one install · works across <b>71 agents</b> · MIT licensed',
+    feat_h2:"Why godot-skills",
+    feat_p:"Skills are portable Markdown playbooks your agent loads on demand — no plugin lock-in.",
+    feat1_t:"C# & GDScript", feat1_d:"Both languages are first-class. Every C#-only skill now spells out the GDScript path too — and keeps the C# tips.",
+    feat2_t:"Build scenes in code", feat2_d:"An agent has no editor, so it writes <code>.tscn</code> files in code — 2D, 3D, or mixed, with the right node family.",
+    feat3_t:"Version-aware API", feat3_d:"The API lookup detects your Godot version and language, then generates a matching reference on demand.",
+    feat4_t:"Closes the loop", feat4_d:"Headless screenshot and capture skills let the agent <em>look</em> at the result instead of guessing.",
+    skills_h2:"The skills",
+    skills_p:"One <code>npx skills add</code> brings them all. Most also fire automatically from their description.",
+    install_h2:"Install",
+    install_p:"Pick your agent. Both paths deliver the same 13 skills.",
+    panel1_h3:'🛠️ Any agent <span class="sub">(via the skills CLI)</span>',
+    panel1_lede:"Claude Code, Cursor, Codex, Gemini CLI, Copilot … auto-detected.",
+    panel2_h3:'🤖 Claude Code <span class="sub">(as a plugin)</span>',
+    panel2_lede:"Add the marketplace, then install the bundled plugin.",
+    c_all:"# all skills, into your detected agents",
+    c_preview:"# preview first, or grab just one (global)",
+    c_invoke:"# then invoke any skill",
+    footer_l:"© 2026 Tianpei Zang · MIT License",
+    footer_r:'Open <a href="https://agentskills.io" target="_blank" rel="noopener">Agent Skills</a> format · <a href="https://github.com/cnqdztp/godot-skills" target="_blank" rel="noopener">github.com/cnqdztp/godot-skills</a>',
+    skills:{
+      "godot-mobile-web":"Shipping a GDScript 2D game to web & mobile: audio-gesture unlock, the soft-keyboard flag, seamless scrolling, shadows that sit at the feet, downloadable asset packs.",
+      "godot-api":"Pinpoint lookup of Godot classes, APIs and syntax. Version- and language-aware — a separate reference per Godot version and language.",
+      "godot-quirks":"Engine-level gotchas and non-obvious behavior — nodes dropped on save, collision bitmasks, container relayout, offset_transform.",
+      "godot-ui-tscn":"Author UI as .tscn scenes plus thin scripts; keep styling in resources with a clean 3-layer strategy.",
+      "godot-ui-foundation":"Viewport stretch, HiDPI / Retina scaling, a theme-variation taxonomy, and variable-font weights done right.",
+      "godot-scene-builder":"Build any .tscn in code with a headless SceneTree builder — 2D, 3D, or mixed — picking the right node family.",
+      "godot-scaffold":"Plan the architecture and emit a compilable project skeleton (C# .csproj or pure GDScript).",
+      "godot-asset-gen":"Generate images, GLB 3D models and animated sprite sheets; background removal, slicing, budget planning.",
+      "godot-automatic-ui-qa":"Inject a screenshot timer, run the project, and read the PNG yourself to check the UI.",
+      "godot-capture":"Headless screenshot and video capture (Xvfb/Vulkan) for any Godot project.",
+      "godot-test-harness":"Write a SceneTree test script (.cs or .gd) that loads a scene and verifies a goal.",
+      "godot-android-export":"Export a Godot project — C# (.NET) or GDScript — as a debug APK for Android.",
+      "godot-passthrough-game":"Transparent desktop-pet / widget / overlay games, and their click-through traps."
+    }
+  },
+
+  zh: {
+    _name:"简体中文",
+    title:"godot-skills — 让 AI 智能体上手 Godot 4 游戏开发的技能集",
+    meta_desc:"用于 Godot 4 游戏开发的开放 Agent Skills。一句 npx skills add 即可装进任意智能体，也可作为 Claude Code 插件。",
+    nav_why:"简介", nav_skills:"技能", nav_install:"安装", nav_format:"格式", nav_star:"★ 去 GitHub 点星",
+    h1:'让你的 AI 智能体写 <span class="accent">Godot</span> 游戏',
+    sub:"一套 Agent Skills，教会 Claude、Cursor、Codex 等智能体真正动手做 Godot 4 游戏——从引擎的坑、搭场景、做 UI，到素材生成与无头自检。",
+    copy:"复制", copied:"已复制！",
+    cta_primary:"开始上手", cta_ghost:"看看这 13 个技能",
+    hero_meta:'<b>13 个技能</b> · 一行装好 · 兼容 <b>71 种智能体</b> · MIT 许可',
+    feat_h2:"为什么用 godot-skills",
+    feat_p:"技能就是可移植的 Markdown 手册，智能体用到才加载，不被任何插件绑死。",
+    feat1_t:"C# 与 GDScript", feat1_d:"两种语言都是主角。原本只讲 C# 的技能，如今也写全了 GDScript 的做法，同时保留 C# 专属提示。",
+    feat2_t:"用代码搭场景", feat2_d:"智能体没有编辑器，于是用代码写出 <code>.tscn</code>——2D、3D 或混合，都挑对节点家族。",
+    feat3_t:"随版本而变的 API", feat3_d:"API 查询会认出你的 Godot 版本与语言，再按需生成对应的参考资料。",
+    feat4_t:"自己闭环验证", feat4_d:"无头截图与录制技能，让智能体亲眼<em>看</em>结果，而不是靠猜。",
+    skills_h2:"技能一览",
+    skills_p:"一句 <code>npx skills add</code> 全部装好，多数还会按描述自动触发。",
+    install_h2:"安装",
+    install_p:"挑你用的智能体，两条路装的是同一批 13 个技能。",
+    panel1_h3:'🛠️ 任意智能体 <span class="sub">（经 skills CLI）</span>',
+    panel1_lede:"Claude Code、Cursor、Codex、Gemini CLI、Copilot…… 自动识别。",
+    panel2_h3:'🤖 Claude Code <span class="sub">（作为插件）</span>',
+    panel2_lede:"先添加 marketplace，再装上打包好的插件。",
+    c_all:"# 全部技能，装进识别到的智能体",
+    c_preview:"# 先看一眼，或只装其中一个（全局）",
+    c_invoke:"# 然后调用任意技能",
+    footer_l:"© 2026 臧天培 · MIT 许可",
+    footer_r:'开放 <a href="https://agentskills.io" target="_blank" rel="noopener">Agent Skills</a> 格式 · <a href="https://github.com/cnqdztp/godot-skills" target="_blank" rel="noopener">github.com/cnqdztp/godot-skills</a>',
+    skills:{
+      "godot-mobile-web":"把 GDScript 2D 游戏发到网页和手机：音频手势解锁、软键盘开关、无缝滚动、阴影贴在脚下、可下载的素材包。",
+      "godot-api":"精准查 Godot 的类、API 和语法。随版本与语言而变——每个 Godot 版本和语言各存一套参考。",
+      "godot-quirks":"引擎层的坑与隐蔽行为——保存时丢节点、碰撞位掩码、容器重排、offset_transform。",
+      "godot-ui-tscn":"把 UI 写成 .tscn 场景加薄脚本；样式放进资源，三层策略干净利落。",
+      "godot-ui-foundation":"视口拉伸、HiDPI/Retina 缩放、主题变体体系，以及变量字重的正确写法。",
+      "godot-scene-builder":"用无头 SceneTree 构建器在代码里生成任意 .tscn——2D、3D 或混合——并挑对节点家族。",
+      "godot-scaffold":"先把架构想清楚，再产出可编译的项目骨架（C# .csproj 或纯 GDScript）。",
+      "godot-asset-gen":"生成图片、GLB 3D 模型与序列帧精灵；抠图、切图、预算规划。",
+      "godot-automatic-ui-qa":"注入截图定时器、跑起项目，自己读 PNG 来核对 UI。",
+      "godot-capture":"为任意 Godot 项目做无头截图与录像（Xvfb/Vulkan）。",
+      "godot-test-harness":"写一个 SceneTree 测试脚本（.cs 或 .gd），加载场景并验证目标。",
+      "godot-android-export":"把 Godot 项目——C#(.NET) 或 GDScript——导出成安卓调试 APK。",
+      "godot-passthrough-game":"透明桌宠 / 小组件 / 悬浮窗游戏，以及它们的点击穿透坑。"
+    }
+  },
+
+  ja: {
+    _name:"日本語",
+    title:"godot-skills — AIエージェントで Godot 4 のゲームを作るスキル集",
+    meta_desc:"Godot 4 のゲーム開発向けオープンな Agent Skills。npx skills add でどのエージェントにも、または Claude Code のプラグインとして導入できます。",
+    nav_why:"概要", nav_skills:"スキル", nav_install:"導入", nav_format:"形式", nav_star:"★ GitHub でスター",
+    h1:'AIエージェントで <span class="accent">Godot</span> ゲームを作ろう',
+    sub:"Claude・Cursor・Codex などのエージェントに、本物の Godot 4 ゲーム開発を仕込む Agent Skills 集。エンジンの落とし穴、シーン構築、UI、アセット生成、ヘッドレス検証まで。",
+    copy:"コピー", copied:"コピーしました！",
+    cta_primary:"はじめる", cta_ghost:"13 個のスキルを見る",
+    hero_meta:'<b>13 スキル</b> · 一度の導入 · <b>71 種のエージェント</b>に対応 · MIT ライセンス',
+    feat_h2:"godot-skills を選ぶ理由",
+    feat_p:"スキルは持ち運べる Markdown の手引き。エージェントが必要なときだけ読み込み、プラグインに縛られません。",
+    feat1_t:"C# と GDScript", feat1_d:"どちらの言語も主役。これまで C# 専用だったスキルも GDScript の手順を併記し、C# 固有のコツも残しています。",
+    feat2_t:"コードでシーンを組む", feat2_d:"エージェントにエディタはないので、<code>.tscn</code> をコードで書き出します——2D・3D・混在、いずれも適切なノード系統で。",
+    feat3_t:"バージョンを意識した API", feat3_d:"API 参照はあなたの Godot バージョンと言語を見分け、必要に応じて対応する資料を生成します。",
+    feat4_t:"自分で検証まで", feat4_d:"ヘッドレスのスクショ・録画スキルで、エージェントが結果を推測せず実際に<em>確認</em>します。",
+    skills_h2:"スキル一覧",
+    skills_p:"<code>npx skills add</code> 一発で全部導入。多くは説明文から自動で起動します。",
+    install_h2:"導入",
+    install_p:"エージェントを選んでください。どちらでも同じ 13 スキルが入ります。",
+    panel1_h3:'🛠️ どのエージェントでも <span class="sub">（skills CLI 経由）</span>',
+    panel1_lede:"Claude Code・Cursor・Codex・Gemini CLI・Copilot…… 自動検出。",
+    panel2_h3:'🤖 Claude Code <span class="sub">（プラグインとして）</span>',
+    panel2_lede:"マーケットプレイスを追加し、同梱プラグインを導入します。",
+    c_all:"# 全スキルを、検出したエージェントへ",
+    c_preview:"# まず一覧、または1つだけ（グローバル）",
+    c_invoke:"# あとは任意のスキルを呼び出す",
+    footer_l:"© 2026 Tianpei Zang · MIT ライセンス",
+    footer_r:'オープンな <a href="https://agentskills.io" target="_blank" rel="noopener">Agent Skills</a> 形式 · <a href="https://github.com/cnqdztp/godot-skills" target="_blank" rel="noopener">github.com/cnqdztp/godot-skills</a>',
+    skills:{
+      "godot-mobile-web":"GDScript の 2D ゲームを Web とモバイルへ：音声のジェスチャ解放、ソフトキーボード設定、シームレススクロール、足元に貼りつく影、配信用アセットパック。",
+      "godot-api":"Godot のクラス・API・文法をピンポイント検索。バージョンと言語ごとに別々の参照を保持。",
+      "godot-quirks":"エンジン特有の落とし穴と非自明な挙動——保存時のノード消失、衝突ビットマスク、コンテナ再配置、offset_transform。",
+      "godot-ui-tscn":"UI を .tscn シーン＋薄いスクリプトで作成。スタイルはリソースに、3層構成ですっきりと。",
+      "godot-ui-foundation":"ビューポート伸縮、HiDPI/Retina のスケーリング、テーマ派生の体系、可変フォントの正しい指定。",
+      "godot-scene-builder":"ヘッドレス SceneTree ビルダーで任意の .tscn をコード生成——2D・3D・混在——適切なノード系統で。",
+      "godot-scaffold":"設計を固め、コンパイル可能なプロジェクト雛形を生成（C# .csproj か純 GDScript）。",
+      "godot-asset-gen":"画像・GLB 3Dモデル・アニメスプライトを生成。背景除去、スライス、予算計画。",
+      "godot-automatic-ui-qa":"スクショ用タイマーを仕込んでプロジェクトを起動し、PNG を自分で読んで UI を確認。",
+      "godot-capture":"任意の Godot プロジェクトをヘッドレスでスクショ・録画（Xvfb/Vulkan）。",
+      "godot-test-harness":"シーンを読み込み目標を検証する SceneTree テストスクリプト（.cs か .gd）を作成。",
+      "godot-android-export":"Godot プロジェクト——C#(.NET) か GDScript——を Android のデバッグ APK に書き出し。",
+      "godot-passthrough-game":"透明なデスクトップペット/ウィジェット/オーバーレイと、そのクリック透過の罠。"
+    }
+  }
+};
+
+let CUR = I18N.en;
+
+function renderSkills(d){
+  document.getElementById('skillGrid').innerHTML = SKILL_NAMES.map(n=>`
+    <div class="card">
+      <div class="name">${n}</div>
+      <div class="desc">${d.skills[n]||""}</div>
+    </div>`).join('');
+}
+
+function applyLang(lang){
+  const d = I18N[lang] || I18N.en;
+  CUR = d;
+  document.documentElement.lang = lang;
+  document.title = d.title;
+  const md = document.querySelector('meta[name=description]');
+  if (md) md.setAttribute('content', d.meta_desc);
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const k = el.getAttribute('data-i18n');
+    if (d[k] != null) el.innerHTML = d[k];
+  });
+  renderSkills(d);
+  document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active', b.dataset.lang===lang));
+}
+
+function setLang(lang){
+  try{ localStorage.setItem('lang', lang); }catch(e){}
+  applyLang(lang);
+}
+
+function detectLang(){
+  try{
+    const saved = localStorage.getItem('lang');
+    if (saved && I18N[saved]) return saved;
+  }catch(e){}
+  const navs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language||'en'];
+  for (const l of navs){
+    const low = (l||'').toLowerCase();
+    if (low.startsWith('zh')) return 'zh';
+    if (low.startsWith('ja')) return 'ja';
+    if (low.startsWith('en')) return 'en';
+  }
+  return 'en';
+}
+
+function copyCmd(){
+  const txt = document.getElementById('cmd').textContent;
+  navigator.clipboard.writeText(txt).then(()=>{
+    const b=document.getElementById('copyBtn');
+    b.textContent=CUR.copied; b.classList.add('done');
+    setTimeout(()=>{b.textContent=CUR.copy; b.classList.remove('done');},1600);
+  });
+}
+
+applyLang(detectLang());
+</script>
+</body>
+</html>
