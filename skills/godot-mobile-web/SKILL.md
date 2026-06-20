@@ -25,7 +25,7 @@ Field notes for a **GDScript** Godot 4 game that exports to **Web (HTML5)** and
 are the things that pass every desktop test and then break only on the deployed
 web/phone build, plus the rendering and async patterns that the genre keeps
 needing. This complements the C#-leaning Godot skills (`godot-quirks`,
-`godot-ui-tscn`, `godot-ui-foundation`, `godot-automatic-ui-qa`); read those for
+`godot-ui-tscn`, `godot-ui-foundation`, `godot-automatic-qa`); read those for
 engine quirks, UI-as-`.tscn`, viewport/DPI, and the headless screenshot loop.
 
 ## When to use this
@@ -226,7 +226,7 @@ already-bundled assets so it can start immediately.
   asking the user for a screenshot. **Caveat: `--headless` does NOT render the
   viewport texture** (`get_viewport().get_texture().get_image()` comes back blank);
   run with a real rendering context (a normal windowed run on macOS/Linux/CI with a
-  display). See `godot-automatic-ui-qa` / `godot-capture` for the full loop.
+  display). See `godot-automatic-qa` / `godot-capture` for the full loop.
 
 - **Use the project's pinned Godot binary** for validation/QA (e.g. the exact 4.7
   RC), not whatever `godot` is on PATH — engine point releases change behavior.

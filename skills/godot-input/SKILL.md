@@ -5,8 +5,7 @@ metadata:
 description: >-
   Architecture for Godot 4 input when a game must support gamepad AND
   mouse/keyboard at the same time — and optionally Steam Input — without the
-  three paths fighting each other. Patterns distilled from a shipping commercial
-  roguelike (Slay the Spire 2): a semantic-action "normalization bus" that turns
+  three paths fighting each other: a semantic-action "normalization bus" that turns
   every raw device event into one set of gameplay actions via
   Input.ParseInputEvent; decoupling an optional platform SDK (Steam Input) from
   the engine-native gamepad reader with a strategy + always-present fallback so
@@ -26,9 +25,9 @@ description: >-
 
 # Godot 4 Input Architecture (multi-device, SDK-optional)
 
-Most Godot input tutorials stop at "make an action in the Input Map, call `Input.is_action_pressed`". That falls apart the moment a real game needs **gamepad and mouse/keyboard live at the same time**, **platform-correct button glyphs**, **runtime rebinding**, and an **optional platform SDK** (Steam Input) that may or may not be present. This skill captures how a shipping commercial game (Slay the Spire 2, Godot 4 / C#) solves all five, and what to copy vs. avoid.
+Most Godot input tutorials stop at "make an action in the Input Map, call `Input.is_action_pressed`". That falls apart the moment a real game needs **gamepad and mouse/keyboard live at the same time**, **platform-correct button glyphs**, **runtime rebinding**, and an **optional platform SDK** (Steam Input) that may or may not be present. This skill shows how to solve all five in Godot 4 (C#), and what to copy vs. avoid.
 
-Examples are C# (the reference game is C#); each pattern has a **GDScript callout**. The five patterns are independent — read the one you need.
+Examples are C#; each pattern has a **GDScript callout**. The five patterns are independent — read the one you need.
 
 The mental model: **one bus, many sources.**
 
@@ -71,7 +70,7 @@ public override void _UnhandledKeyInput(InputEvent e)
 The re-injected raw event from step 1 re-enters `_UnhandledInput` and becomes a semantic action in step 2. One mapping table, not one per device.
 
 > ### ⚠️ Footgun: never reuse a mutable `InputEvent` instance
-> The reference game caches one `InputEventAction`/`InputEventJoypadMotion` and mutates `.Pressed`/`.AxisValue` before each `ParseInputEvent` — to save allocations. **Don't.** Godot queues/forwards the *reference*; a later mutation (the matching release, or next frame) can corrupt what a consumer reads, because the pipeline does not deep-copy. Allocate a fresh `new InputEventAction { … }` per injection. (The game's own `NInputManager` does it correctly; its strategy classes don't — copy the manager, not the strategies.)
+> It's tempting to cache one `InputEventAction`/`InputEventJoypadMotion` and mutate `.Pressed`/`.AxisValue` before each `ParseInputEvent` to save allocations. **Don't.** Godot queues/forwards the *reference*; a later mutation (the matching release, or next frame) can corrupt what a consumer reads, because the pipeline does not deep-copy. Allocate a fresh `new InputEventAction { … }` per injection — do the per-event allocation in your one input-manager node, not inside each device strategy.
 
 > **GDScript:** `func _unhandled_key_input(e):` → `Input.parse_input_event(InputEventAction.new())` after setting `.action` / `.pressed`. Same rule: build a *new* `InputEventAction.new()` each time; don't keep one around and mutate it.
 
@@ -232,7 +231,7 @@ On screen change: re-grab the default control's focus *deferred* in controller m
 
 **Problem:** `InputMap.action_add_event` / `action_erase_events` mutate global engine state, are awkward to serialize, and make non-destructive "swap" UX hard.
 
-**Solution (used by the reference game — zero `InputMap` mutation anywhere):** an indirection layer.
+**Solution — an indirection layer with zero `InputMap` mutation anywhere:**
 
 1. **In `project.godot`**, define your real gameplay actions with **empty event arrays** (`mega_attack={"events":[]}`). Define a separate set of **fully-bound physical actions** for hardware you don't remap (`controller_face_button_south` → its joypad button). The physical actions stay bound because the translator matches on them; the gameplay actions stay empty because they're filled at runtime.
 2. **Keep two C# dictionaries**: `action → Key` (keyboard) and `gameAction → physicalActionName` (controller).
@@ -269,7 +268,7 @@ So glyphs don't hard-depend on Steam either — Steam just gives a more accurate
 
 ## Touch is a separate modality — and the seam to add it
 
-None of the above gives you touchscreen. The reference game has **zero** native touch handling (`InputEventScreenTouch/ScreenDrag` appear only in a vendored addon). What looks like touch isn't: `InputEventPanGesture` is the desktop **trackpad/wheel scroll** gesture (always branched next to `InputEventMouseButton.WheelUp/Down`), and "touchpad" refers to the **DualShock touchpad button**.
+None of the above gives you touchscreen — a desktop/console input stack like this has **zero** native touch handling. Watch for false positives: `InputEventPanGesture` is the desktop **trackpad/wheel scroll** gesture (usually branched next to `InputEventMouseButton.WheelUp/Down`), and "touchpad" means the **DualShock touchpad button**, not a screen.
 
 If a touch device is present, Godot's default `emulate_mouse_from_touch=true` turns taps into synthetic mouse clicks, so buttons/hover already work — but there's no native multi-touch, drag, or pinch.
 
@@ -293,7 +292,7 @@ Rules: keep one helper (don't scatter touch parsing); feed the same `_targetPosi
 
 ## Suggested node layout
 
-Three focused nodes, not one god-object (the reference game splits responsibilities deliberately):
+Three focused nodes, not one god-object — split responsibilities deliberately:
 - **InputManager** — owns `_UnhandledKeyInput` (keyboard → semantic) and `_UnhandledInput` (controller raw → semantic); holds the rebind dictionaries; emits `InputRebound`.
 - **ControllerManager** — owns `_Input` (device-mode detection) and `_Process` (poll the active strategy); holds `IsUsingController` + the strategy; emits `ControllerDetected` / `MouseDetected` / `ControllerTypeChanged`.
 - **CursorManager** — listens to those signals; toggles `Input.MouseMode` and the custom cursor.

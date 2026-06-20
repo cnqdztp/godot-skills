@@ -1,6 +1,6 @@
 # Steam Input integration (Godot 4)
 
-Read this only when you actually wire Steam Input. The decoupling pattern (strategy + always-present Godot fallback) is in `SKILL.md` Pattern 2 — this file is the concrete SDK wiring, distilled from a shipping C# game (Slay the Spire 2) that uses **Steamworks.NET**. In GDScript you'd use a GDExtension binding (e.g. GodotSteam); the API shapes and the rules below are the same.
+Read this only when you actually wire Steam Input. The decoupling pattern (strategy + always-present Godot fallback) is in `SKILL.md` Pattern 2 — this file is the concrete SDK wiring for **Steamworks.NET** (the common C# Steam binding). In GDScript you'd use a GDExtension binding (e.g. GodotSteam); the API shapes and the rules below are the same.
 
 Steam Input is worth it for: player remapping via the Steam overlay (you stop owning rebind UI), accurate per-device button glyphs, Steam Deck / Steam Controller support, and broad pad compatibility. The cost is a poll-based API and a hard dependency you must keep optional.
 
@@ -27,8 +27,8 @@ ProcessInput():
         currentHandle = null;     fallback.ProcessInput()                # gate 3: clear + degrade
 ```
 
-- **`SteamInput.RunFrame()`** must be called each frame before reading action data (you passed `bExplicitlyCallRunFrame:false`, but the game still calls it explicitly here).
-- **Connected controllers:** `GetConnectedControllers(InputHandle_t[16])`; the reference game uses **`array[0]` only** (no local multiplayer / multi-pad). Enumerate if you need more.
+- **`SteamInput.RunFrame()`** must be called each frame before reading action data (you pass `bExplicitlyCallRunFrame:false`, but still call it explicitly here).
+- **Connected controllers:** `GetConnectedControllers(InputHandle_t[16])`; for a single-player game use **`array[0]` only** (no local multiplayer / multi-pad). Enumerate if you need more.
 - **Clear the handle on any exception** so the next frame cleanly retries enumeration instead of hammering a dead handle.
 
 ### Digital actions
@@ -55,7 +55,7 @@ if moved beyond ~0.05 from last:
 ## Action sets
 
 - Get the set once: `GetActionSetHandle("Controls")`; **re-activate it** with `ActivateActionSet(handle, set)` on every reconnect check (cheap, and survives controller swaps).
-- The reference game uses a **single action set** and **no action-set layers** — screen context (combat vs. menu) is handled in game code, not by switching Steam action sets. Layers (`ActivateActionSetLayer`) are available if you want Steam to gate inputs per screen, but you don't need them; a single set keeps the model simple.
+- Prefer a **single action set** with **no action-set layers** — handle screen context (combat vs. menu) in game code rather than by switching Steam action sets. Layers (`ActivateActionSetLayer`) exist if you want Steam to gate inputs per screen, but you usually don't need them; a single set keeps the model simple.
 
 ## Glyphs (button prompts)
 
@@ -71,17 +71,17 @@ So even with Steam, your bundled art is the primary glyph source; Steam just tel
 - `ShouldAllowControllerRebinding`: **false when Steam is initialized** (Steam owns remapping via the overlay; disable your in-game controller rebinder, show a "configure in Steam" note, fade the icon). When Steam is down, delegate to the fallback (which returns **true** — your own rebinder works).
 - Default controller map, config, and glyphs all delegate to the fallback under the same gates. Delegate the **whole interface**, not just `ProcessInput`.
 
-## What this game does NOT use
+## What you can usually skip
 
-- **No rumble / haptics / LED / trigger effects** (`TriggerVibration`, `SetLEDColor`, …) — none called. Add if you want them.
-- **No action-set layers.**
-- **No multi-controller.**
+- **Rumble / haptics / LED / trigger effects** (`TriggerVibration`, `SetLEDColor`, …) — not needed for input itself; add if you want them.
+- **Action-set layers** — skip unless you need Steam to gate inputs per screen.
+- **Multi-controller** — skip for single-player; `GetConnectedControllers` already enumerates if you later need it.
 
-These are deliberate scope cuts, not requirements — note them so you don't assume the pattern needs them.
+These are scope cuts, not requirements — don't assume the pattern needs them.
 
 ## Gotchas
 
-- **Don't reuse mutable `InputEvent` instances.** The reference Steam strategy caches and mutates `InputEventAction`/`InputEventJoypadMotion` before each `ParseInputEvent`; this is a latent bug (see `SKILL.md` Pattern 1 footgun). Allocate fresh.
+- **Don't reuse mutable `InputEvent` instances.** Caching and mutating one `InputEventAction`/`InputEventJoypadMotion` before each `ParseInputEvent` is a latent bug (see `SKILL.md` Pattern 1 footgun). Allocate fresh.
 - **Poll-based:** if you forget `RunFrame()` or stop calling `ProcessInput()` each frame, input silently dies — there are no events to fall back on.
 - **Y axis flip** between Steam analog data and Godot's `InputEventJoypadMotion` Y.
 - **Reconnect cost:** enumerate controllers on a timer (~1s), not every frame.

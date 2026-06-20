@@ -180,7 +180,7 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span data-i18n="cta_primary">Get started</span>
       </a>
-      <a class="btn btn-ghost" href="#skills" data-i18n="cta_ghost">Browse the 14 skills</a>
+      <a class="btn btn-ghost" href="#skills" data-i18n="cta_ghost">Browse the 13 skills</a>
     </div>
     <p class="meta" data-i18n="hero_meta"></p>
   </div>
@@ -250,8 +250,8 @@ npx skills add cnqdztp/godot-skills@godot-mobile-web -g</code></pre>
 <script>
 const SKILL_NAMES = [
   "godot-mobile-web","godot-api","godot-quirks","godot-ui-tscn","godot-ui-foundation","godot-input",
-  "godot-scene-builder","godot-scaffold","godot-asset-gen","godot-automatic-ui-qa",
-  "godot-capture","godot-test-harness","godot-android-export","godot-passthrough-game"
+  "godot-scene-builder","godot-scaffold","godot-asset-gen","godot-automatic-qa",
+  "godot-capture","godot-android-export","godot-passthrough-game"
 ];
 
 const I18N = {
@@ -263,17 +263,17 @@ const I18N = {
     h1:'Build <span class="accent">Godot</span> games with your AI agent',
     sub:"A collection of Agent Skills that teach Claude, Cursor, Codex and friends how to build real Godot 4 games — engine quirks, scene building, UI, asset generation, headless QA, and more.",
     copy:"Copy", copied:"Copied!",
-    cta_primary:"Get started", cta_ghost:"Browse the 14 skills",
-    hero_meta:'<b>14 skills</b> · one install · works across <b>71 agents</b> · MIT licensed',
+    cta_primary:"Get started", cta_ghost:"Browse the 13 skills",
+    hero_meta:'<b>13 skills</b> · one install · works across <b>71 agents</b> · MIT licensed',
     feat_h2:"Why godot-skills",
     feat_p:"Battle-tested playbooks for the parts of Godot that trip everyone up.",
     feat2_t:"Build scenes in code", feat2_d:"Write <code>.tscn</code> files straight in code — 2D, 3D, or mixed, always with the right node family.",
     feat3_t:"Version-aware API", feat3_d:"The API lookup detects your Godot version and language, then generates a matching reference on demand.",
     feat4_t:"Closes the loop", feat4_d:"Headless screenshot and capture skills let the agent <em>look</em> at the result instead of guessing.",
     skills_h2:"The skills",
-    skills_p:"One <code>npx skills add</code> and all 14 are in place.",
+    skills_p:"One <code>npx skills add</code> and all 13 are in place.",
     install_h2:"Install",
-    install_p:"Pick your agent. Both paths deliver the same 14 skills.",
+    install_p:"Pick your agent. Both paths deliver the same 13 skills.",
     panel1_h3:'🛠️ Any agent <span class="sub">(via the skills CLI)</span>',
     panel1_lede:"Claude Code, Cursor, Codex, Gemini CLI, Copilot … auto-detected.",
     panel2_h3:'🤖 Claude Code <span class="sub">(as a plugin)</span>',
@@ -293,9 +293,8 @@ const I18N = {
       "godot-scene-builder":"Build any .tscn in code with a headless SceneTree builder — 2D, 3D, or mixed — picking the right node family.",
       "godot-scaffold":"Plan the architecture and emit a compilable project skeleton (C# .csproj or pure GDScript).",
       "godot-asset-gen":"Generate images, GLB 3D models and animated sprite sheets; background removal, slicing, budget planning.",
-      "godot-automatic-ui-qa":"Inject a screenshot timer, run the project, and read the PNG yourself to check the UI.",
+      "godot-automatic-qa":"Inject a screenshot timer, run the project, and read the PNG yourself to check the UI.",
       "godot-capture":"Headless screenshot and video capture (Xvfb/Vulkan) for any Godot project.",
-      "godot-test-harness":"Write a SceneTree test script (.cs or .gd) that loads a scene and verifies a goal.",
       "godot-android-export":"Export a Godot project — C# (.NET) or GDScript — as a debug APK for Android.",
       "godot-passthrough-game":"Transparent desktop-pet / widget / overlay games, and their click-through traps."
     }
@@ -309,17 +308,17 @@ const I18N = {
     h1:'让你的 AI 智能体写 <span class="accent">Godot</span> 游戏',
     sub:"一套 Agent Skills，教会 Claude、Cursor、Codex 等智能体真正动手做 Godot 4 游戏——从引擎的坑、搭场景、做 UI，到素材生成与无头自检。",
     copy:"复制", copied:"已复制！",
-    cta_primary:"开始上手", cta_ghost:"看看这 14 个技能",
-    hero_meta:'<b>14 个技能</b> · 一行装好 · 兼容 <b>71 种智能体</b> · MIT 许可',
+    cta_primary:"开始上手", cta_ghost:"看看这 13 个技能",
+    hero_meta:'<b>13 个技能</b> · 一行装好 · 兼容 <b>71 种智能体</b> · MIT 许可',
     feat_h2:"为什么用 godot-skills",
     feat_p:"把 Godot 里最容易翻车的环节，做成经过实战的操作手册。",
     feat2_t:"用代码搭场景", feat2_d:"直接用代码写出 <code>.tscn</code>——2D、3D 或混合，都挑对节点家族。",
     feat3_t:"随版本而变的 API", feat3_d:"API 查询会认出你的 Godot 版本与语言，再按需生成对应的参考资料。",
     feat4_t:"自己闭环验证", feat4_d:"无头截图与录制技能，让智能体亲眼<em>看</em>结果，而不是靠猜。",
     skills_h2:"技能一览",
-    skills_p:"一句 <code>npx skills add</code>，14 个技能全部就位。",
+    skills_p:"一句 <code>npx skills add</code>，13 个技能全部就位。",
     install_h2:"安装",
-    install_p:"挑你用的智能体，两条路装的是同一批 14 个技能。",
+    install_p:"挑你用的智能体，两条路装的是同一批 13 个技能。",
     panel1_h3:'🛠️ 任意智能体 <span class="sub">（经 skills CLI）</span>',
     panel1_lede:"Claude Code、Cursor、Codex、Gemini CLI、Copilot…… 自动识别。",
     panel2_h3:'🤖 Claude Code <span class="sub">（作为插件）</span>',
@@ -339,9 +338,8 @@ const I18N = {
       "godot-scene-builder":"用无头 SceneTree 构建器在代码里生成任意 .tscn——2D、3D 或混合——并挑对节点家族。",
       "godot-scaffold":"先把架构想清楚，再产出可编译的项目骨架（C# .csproj 或纯 GDScript）。",
       "godot-asset-gen":"生成图片、GLB 3D 模型与序列帧精灵；抠图、切图、预算规划。",
-      "godot-automatic-ui-qa":"注入截图定时器、跑起项目，自己读 PNG 来核对 UI。",
+      "godot-automatic-qa":"注入截图定时器、跑起项目，自己读 PNG 来核对 UI。",
       "godot-capture":"为任意 Godot 项目做无头截图与录像（Xvfb/Vulkan）。",
-      "godot-test-harness":"写一个 SceneTree 测试脚本（.cs 或 .gd），加载场景并验证目标。",
       "godot-android-export":"把 Godot 项目——C#(.NET) 或 GDScript——导出成安卓调试 APK。",
       "godot-passthrough-game":"透明桌宠 / 小组件 / 悬浮窗游戏，以及它们的点击穿透坑。"
     }
@@ -355,17 +353,17 @@ const I18N = {
     h1:'AIエージェントで <span class="accent">Godot</span> ゲームを作ろう',
     sub:"Claude・Cursor・Codex などのエージェントに、本物の Godot 4 ゲーム開発を仕込む Agent Skills 集。エンジンの落とし穴、シーン構築、UI、アセット生成、ヘッドレス検証まで。",
     copy:"コピー", copied:"コピーしました！",
-    cta_primary:"はじめる", cta_ghost:"14 個のスキルを見る",
-    hero_meta:'<b>14 スキル</b> · 一度の導入 · <b>71 種のエージェント</b>に対応 · MIT ライセンス',
+    cta_primary:"はじめる", cta_ghost:"13 個のスキルを見る",
+    hero_meta:'<b>13 スキル</b> · 一度の導入 · <b>71 種のエージェント</b>に対応 · MIT ライセンス',
     feat_h2:"godot-skills を選ぶ理由",
     feat_p:"Godot でつまずきやすいところを、実戦で鍛えた手順書に。",
     feat2_t:"コードでシーンを組む", feat2_d:"<code>.tscn</code> をコードで直接書き出し——2D・3D・混在、いずれも適切なノード系統で。",
     feat3_t:"バージョンを意識した API", feat3_d:"API 参照はあなたの Godot バージョンと言語を見分け、必要に応じて対応する資料を生成します。",
     feat4_t:"自分で検証まで", feat4_d:"ヘッドレスのスクショ・録画スキルで、エージェントが結果を推測せず実際に<em>確認</em>します。",
     skills_h2:"スキル一覧",
-    skills_p:"<code>npx skills add</code> 一発で、14 スキルがすべて揃います。",
+    skills_p:"<code>npx skills add</code> 一発で、13 スキルがすべて揃います。",
     install_h2:"導入",
-    install_p:"エージェントを選んでください。どちらでも同じ 14 スキルが入ります。",
+    install_p:"エージェントを選んでください。どちらでも同じ 13 スキルが入ります。",
     panel1_h3:'🛠️ どのエージェントでも <span class="sub">（skills CLI 経由）</span>',
     panel1_lede:"Claude Code・Cursor・Codex・Gemini CLI・Copilot…… 自動検出。",
     panel2_h3:'🤖 Claude Code <span class="sub">（プラグインとして）</span>',
@@ -385,9 +383,8 @@ const I18N = {
       "godot-scene-builder":"ヘッドレス SceneTree ビルダーで任意の .tscn をコード生成——2D・3D・混在——適切なノード系統で。",
       "godot-scaffold":"設計を固め、コンパイル可能なプロジェクト雛形を生成（C# .csproj か純 GDScript）。",
       "godot-asset-gen":"画像・GLB 3Dモデル・アニメスプライトを生成。背景除去、スライス、予算計画。",
-      "godot-automatic-ui-qa":"スクショ用タイマーを仕込んでプロジェクトを起動し、PNG を自分で読んで UI を確認。",
+      "godot-automatic-qa":"スクショ用タイマーを仕込んでプロジェクトを起動し、PNG を自分で読んで UI を確認。",
       "godot-capture":"任意の Godot プロジェクトをヘッドレスでスクショ・録画（Xvfb/Vulkan）。",
-      "godot-test-harness":"シーンを読み込み目標を検証する SceneTree テストスクリプト（.cs か .gd）を作成。",
       "godot-android-export":"Godot プロジェクト——C#(.NET) か GDScript——を Android のデバッグ APK に書き出し。",
       "godot-passthrough-game":"透明なデスクトップペット/ウィジェット/オーバーレイと、そのクリック透過の罠。"
     }

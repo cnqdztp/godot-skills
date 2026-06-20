@@ -1,27 +1,32 @@
 ---
-name: godot-automatic-ui-qa
+name: godot-automatic-qa
 description: |
-  Inject a one-shot screenshot timer into a running Godot 4 project, launch the project headfully from CLI, and read the resulting PNG yourself. Use this whenever the user complains the UI "looks wrong / 一塌糊涂 / panels invisible / proportions off", whenever you've just changed a theme/layout/scene and need to verify visually before claiming done, or whenever you're stuck on a visual bug and would otherwise be guessing what's on screen. Strongly prefer this over asking the user to take a screenshot — close the verification loop yourself.
+  Self-verify Godot 4 work instead of guessing or asking the user — two loops. (1) A fast VISUAL loop: inject a one-shot screenshot timer into the running project, launch it headfully from the CLI, and read the resulting PNG yourself. (2) A headless BEHAVIORAL loop: write a SceneTree test script (ASSERT PASS/FAIL console checks, simulated input, closed-loop steering) that loads a scene and verifies it behaves correctly across frames. Use the visual loop whenever the user says the UI "looks wrong / 一塌糊涂 / panels invisible / proportions off", or after you change a theme/layout/scene and need to see it before claiming done. Use the test script whenever you need automated verification that a scene or feature behaves correctly — positions, state, reaching a goal — either standalone or feeding `godot-capture` for a video. Works for C# (.NET) and GDScript. Strongly prefer this over asking the user to take a screenshot — close the verification loop yourself.
 ---
 
-# Automatic UI QA — visual self-verification for Godot
+# Automatic QA — self-verification for Godot (visual + behavioral)
 
-The structural smoke test ("scene instantiates, parser clean, 0 errors") doesn't see whether panels have backgrounds, whether splits give the right proportions, whether icons resolved, or whether text overflowed. The user does. Don't ship UI work blind — see it first.
+The structural smoke test ("scene instantiates, parser clean, 0 errors") doesn't see whether panels have backgrounds, whether splits give the right proportions, whether icons resolved, whether text overflowed — or whether the character actually reached the goal, the camera tracked it, and the state machine advanced. Don't ship work blind. Verify it yourself, two ways:
 
-This skill gives you a fast loop: inject a temporary screenshot timer into the project, launch it headfully, the project saves a PNG and quits, then you `Read` the PNG. Edit, repeat. No `.capture/` scaffolding, no `xvfb`, no `ffmpeg` — that's `godot-capture`'s job for final deliverables. This is for the inner debug loop.
+- **Loop A — visual:** inject a screenshot timer, launch headfully, `Read` the PNG. For "does it *look* right".
+- **Loop B — behavioral:** a headless `SceneTree` test script with `ASSERT PASS/FAIL` lines and simulated input. For "does it *behave* right" across frames.
 
-## When this is the right tool
+## Which loop
 
-Use this when:
-- You changed a theme, scene tree, or layout and need to see whether it actually looks right
-- The user said the UI is bad without specifics — find out *what* before refactoring
-- You're tempted to write "claims it works pending visual verification" — verify instead
-- A second iteration would be cheap (you'll likely change something and look again)
+- *Looks wrong / layout / theme / icons / text overflow* → **Loop A** (visual screenshot).
+- *Behavior across frames — position, velocity, state, "did it reach the goal"* → **Loop B** (SceneTree test).
+- *A final video or screenshot deliverable* → `godot-capture` (Loop B's test scripts feed its movie-writer flow).
 
-Don't use this for:
-- Producing final video/screenshot deliverables → use `godot-capture`
-- Asserting behavioral correctness across frames → use a SceneTree test script
-- Cases where you genuinely can't get the rendered scene to a useful state without user input (login dialog, file picker, etc.) — say so, ask the user
+## When NOT to use this
+
+- Producing final video/screenshot deliverables → use `godot-capture`.
+- Cases where you genuinely can't get the rendered scene to a useful state without user input (login dialog, file picker, etc.) — say so, and ask the user.
+
+---
+
+# Loop A — Quick visual loop (headful screenshot)
+
+A fast inner loop: inject a temporary screenshot timer into the project, launch it headfully, the project saves a PNG and quits, then you `Read` the PNG. Edit, repeat. No `.capture/` scaffolding, no `xvfb`, no `ffmpeg` — that's `godot-capture`'s job for final deliverables. This is for the inner debug loop, and a second iteration is cheap (you'll likely change something and look again).
 
 ## The minimal recipe
 
@@ -129,7 +134,7 @@ Apps with a "pick a project" or "main menu" gate screenshot the gate, not the fe
 
 - `godot project.godot` and `godot --path <dir>` both run the **game** if no `-e` flag is present. With `-e` (or `--editor`) you get the editor. Don't accidentally screenshot the editor.
 - `godot --script foo.gd project.godot` runs in `--script` mode, which uses the editor's autoload context — autoload singletons may fail to load with `Identifier not found`. For real visual QA, run the project headfully, not via `--script`.
-- `--headless` disables rendering. Headless screenshots return blank/uninitialized images. Don't pair `--headless` with this skill.
+- `--headless` disables rendering. Headless screenshots return blank/uninitialized images. Don't pair `--headless` with Loop A.
 - Pin a resolution with `--resolution WxH`. Otherwise the OS picks one based on screen and screenshots have inconsistent aspect ratio between iterations — comparisons become harder.
 - Save under `/tmp/` (or another absolute path you can read back) — the `Read` tool can read any path it has access to and renders PNGs inline.
 
@@ -216,7 +221,7 @@ If you anticipate needing this loop again soon, leave the function body in place
 
 ## Validation standard
 
-A QA pass with this skill is real if:
+A visual QA pass is real if:
 
 - The screenshot loaded and you actually read it (not just confirmed the file exists)
 - You named at least one specific visual defect, or stated explicitly "I see no visual defects"
@@ -239,3 +244,91 @@ Symptom: user says the UI looks wrong; you've never seen the rendered app.
 9. Report what changed.
 
 Total: a few minutes per iteration, no user round-trips needed.
+
+---
+
+# Loop B — Headless behavioral test (SceneTree script)
+
+When the question is *behavior* — did the character reach the goal, did the camera track it, did the state machine advance, is the velocity right — write a `SceneTree` test script that loads the scene under test, advances frames, and verifies the goal. C#: `test/TestXxx.cs` (e.g. `test/TestT3.cs`); GDScript: `test/test_xxx.gd` (e.g. `test/test_t3.gd`).
+
+## Language: C# (.NET) or GDScript?
+
+Detect the project language before writing the test. A `.csproj`/`.sln` file, or a `[dotnet]` section in `project.godot`, means the project is **C# (.NET)**; otherwise it is **GDScript**. The test logic is identical across both languages — load the scene, advance frames, assert — only the syntax and the build prerequisite differ. Pick the path that matches the project and follow the language-labeled notes below.
+
+## SceneTree script contract
+
+Tests must extend `SceneTree` (not Node). Key details shared by both languages:
+- Setup goes in the initialize hook, **not** a `_ready` — `_Initialize()` (C#) / `_initialize()` (GDScript)
+- The per-frame process hook returns `false` to keep running
+- Camera needs `current = true` to activate (`_cam.Current = true` in C#)
+- The script must **not** call `Quit()` — exit is handled by `--quit-after N` (a built-in Godot flag) or by `godot-capture`'s movie writer
+
+**[C# only]**
+- `_Process(double delta)` returns `bool` — return `false` to keep running
+- Must be `public partial class`
+- Must run `dotnet build` before running the test
+
+**(GDScript)**
+- Use `func _initialize() -> void:` for setup
+- Use `func _process(delta) -> bool:` returning `false` to keep running
+- No `public partial class` — a plain script `extends SceneTree` is enough
+- No `dotnet build` step — there is nothing to compile
+
+## How to run Loop B
+
+- **Standalone behavioral check (no video):**
+
+  ```bash
+  godot --headless --script test/test_xxx.gd --quit-after 120   # GDScript
+  # C#: dotnet build first, then  godot --headless --script test/TestXxx.cs --quit-after 120
+  ```
+
+  Then grep stdout for `ASSERT FAIL` — any such line must be fixed before the task is complete. `--quit-after N` is the frame count after which Godot exits, so the script never needs to call `Quit()` itself.
+
+- **With video:** run the same script through `godot-capture`'s movie-writer flow (`--write-movie … --fixed-fps … --quit-after … --script test/…`), which renders frames and lets you encode an `mp4`.
+
+## Console assertions
+
+The test harness stdout is captured alongside any screenshots. Print `ASSERT PASS/FAIL: ...` lines to verify behavioral properties that are hard to judge visually (exact positions, velocities, state changes). After running, check stdout for any `ASSERT FAIL` lines — these must be fixed before the task is complete.
+
+**(C# / .NET)**
+
+```csharp
+GD.Print("ASSERT PASS/FAIL: ...");
+```
+
+**(GDScript)**
+
+```gdscript
+print("ASSERT PASS/FAIL: ...")
+```
+
+## Simulated input
+
+For tests needing player input, use a `Timer` to trigger actions. This works in both languages.
+
+**(C# / .NET)**
+
+```csharp
+var timer = new Timer();
+timer.WaitTime = 1.0;
+timer.OneShot = true;
+timer.Timeout += () => Input.ActionPress("move_forward");
+Root.AddChild(timer);
+timer.Start();
+```
+
+**(GDScript)**
+
+```gdscript
+var timer := Timer.new()
+timer.wait_time = 1.0
+timer.one_shot = true
+timer.timeout.connect(func(): Input.action_press("move_forward"))
+root.add_child(timer)
+timer.start()
+```
+
+### Sustained movement — use closed-loop steering (default)
+
+Open-loop input (timed press/release sequences) causes visible drift, edge-sticking, and tightening spirals as per-frame errors compound. **Default to closed-loop waypoint steering:** read the actual position each frame and steer toward the next waypoint. This applies to all tests with sustained movement, not just presentation scripts.

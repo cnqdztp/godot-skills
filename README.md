@@ -38,12 +38,11 @@ Either way you get all the skills below. Under Claude Code they're invoked as
 | `godot-ui-foundation` | Viewport stretch, HiDPI/Retina scaling, theme taxonomy, variable-font weights. |
 | `godot-input` | Multi-device input architecture (C#/GDScript): a semantic-action normalization bus, Steam Input decoupled behind an always-present Godot fallback (plays without Steam), mouse↔controller device switching, focus-based controller navigation, rebinding **without** mutating `InputMap`, per-controller button glyphs, and the touch seam. |
 | `godot-asset-gen` | Generate images / 3D models / sprite sheets (Gemini, Grok, Tripo3D), bg removal, slicing. |
-| `godot-automatic-ui-qa` | Inject a screenshot timer, run the project, and read the PNG yourself to verify UI. |
+| `godot-automatic-qa` | Self-verify your work: a headful screenshot loop (inject a timer, run the project, read the PNG yourself) for visual checks, plus a headless `SceneTree` test script (ASSERT, simulated input) for behavioral checks. |
 | `godot-capture` | Headless screenshot + video capture (Xvfb/Vulkan) for C# or GDScript projects. |
 | `godot-passthrough-game` | Transparent desktop-pet / widget / overlay games and their click-through traps. |
 | `godot-scaffold` | Design architecture + emit a compilable project skeleton (C# `.csproj` or GDScript). |
 | `godot-scene-builder` | Generate `.tscn` files programmatically with a headless SceneTree builder (C# or GDScript). |
-| `godot-test-harness` | Write a SceneTree test script (C# `.cs` or GDScript `.gd`) for visual verification. |
 | `godot-android-export` | Export a Godot project (C# or GDScript) as an Android APK. |
 
 ## Note: `godot-api` bootstrap
