@@ -1,0 +1,29 @@
+{
+  "skill_name": "godot-input",
+  "evals": [
+    {
+      "id": 0,
+      "name": "multi-device-architecture",
+      "prompt": "I'm building a Godot 4 game in C# — a deckbuilder. I need full gamepad support, but lots of players use mouse + keyboard and some switch back and forth mid-session. I want the mouse cursor to vanish and a menu item to get highlighted the moment they touch the controller, and the cursor to come back when they move the mouse, without the two fighting. How should I structure the input layer so I'm not branching on device type all over my UI code?",
+      "expected_output": "An architecture that normalizes all input to semantic actions (Input.ParseInputEvent) so UI never branches on device; a single source-of-truth device flag (e.g. IsUsingController); mutually-exclusive detectors to avoid thrash; on switch-to-controller warp/hide cursor + grab UI focus, on switch-to-mouse restore cursor + release focus; gameplay/shortcut pipelines stay live regardless of the flag.",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 1,
+      "name": "steam-input-optional",
+      "prompt": "I want to add Steam Input to my Godot 4 C# game so I get proper Xbox/PlayStation/Switch button-prompt icons and let players remap on the Steam side. But the game also ships on itch.io and players sometimes run it without Steam at all. How do I integrate Steam Input so it's NOT a hard dependency and the game still works perfectly with a plain controller when Steam isn't there?",
+      "expected_output": "A strategy interface with an engine-native (Godot Input Map) implementation that always works, plus a Steam strategy that composes the native one as a private fallback and delegates the whole frame when Steam is unavailable; availability re-checked every frame with SDK exceptions handled; fallback initialized unconditionally; only the SDK strategy constructed; glyphs as bundled assets keyed by abstract button with atlas chosen by controller type so prompts work without Steam.",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 2,
+      "name": "rebinding-gdscript",
+      "prompt": "Godot 4, GDScript. I'm making a controls settings screen where players can rebind both keyboard keys and gamepad buttons. If they pick a key that's already used I want it to swap with the conflicting action rather than refuse, and the bindings need to persist between sessions. What's the cleanest way to do this — should I be editing the InputMap at runtime?",
+      "expected_output": "Advises against mutating Godot's InputMap at runtime for rebinds; keep your own dictionary mapping action -> key/button; resolve conflicts by swapping (the displaced action inherits the old binding) rather than rejecting; apply at runtime by re-injecting semantic actions via Input.parse_input_event; persist as plain data to your own save file (JSON/ConfigFile), not project.godot; GDScript-appropriate APIs.",
+      "files": [],
+      "assertions": []
+    }
+  ]
+}

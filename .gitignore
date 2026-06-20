@@ -1,6 +1,9 @@
 # macOS
 .DS_Store
 
+# skill-creator eval run outputs (bulky; not part of the skill)
+skills/*-workspace/
+
 # godot-api: generated API reference + the sparse Godot clone it's built from.
 # Bootstrapped on demand by skills/godot-api/tools/ensure_doc_api.sh (~20 MB).
 skills/godot-api/doc_api/

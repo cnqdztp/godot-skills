@@ -36,6 +36,7 @@ Either way you get all the skills below. Under Claude Code they're invoked as
 | `godot-quirks` | Engine-level gotchas for both C# and GDScript (serialization, physics, cameras, container relayout / `offset_transform`, …). |
 | `godot-ui-tscn` | Author UI as `.tscn` scenes + thin scripts; 3-layer styling. |
 | `godot-ui-foundation` | Viewport stretch, HiDPI/Retina scaling, theme taxonomy, variable-font weights. |
+| `godot-input` | Multi-device input architecture (C#/GDScript): a semantic-action normalization bus, Steam Input decoupled behind an always-present Godot fallback (plays without Steam), mouse↔controller device switching, focus-based controller navigation, rebinding **without** mutating `InputMap`, per-controller button glyphs, and the touch seam. |
 | `godot-asset-gen` | Generate images / 3D models / sprite sheets (Gemini, Grok, Tripo3D), bg removal, slicing. |
 | `godot-automatic-ui-qa` | Inject a screenshot timer, run the project, and read the PNG yourself to verify UI. |
 | `godot-capture` | Headless screenshot + video capture (Xvfb/Vulkan) for C# or GDScript projects. |
