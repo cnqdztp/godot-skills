@@ -31,9 +31,9 @@ Keep runtime-loaded outputs under `assets/` so the engine can load them at runti
 ### 2. Prioritize and budget
 
 Each asset costs:
-- Texture / simple sprite (Grok): 2 cents
+- Texture / simple sprite (gemini-3.1-flash-lite-image): 2-3 cents
 - Character / reference / 3D ref (Gemini 1K): 7 cents
-- Background: 2 cents (Grok, simple scenic) or 10 cents (Gemini 2K, precise layout)
+- Background: 2-5 cents (flash-lite, simple scenic) or 10 cents (flash/pro 2K, precise layout)
 - 3D model: 37 cents (7 cent Gemini image + 30 cent GLB at medium quality)
 
 Animated sprites cost more — budget carefully:
@@ -57,7 +57,7 @@ Craft each prompt for its specific goal. The art direction tells you the visual 
 
 #### Backend selection
 
-Use Gemini (`--model gemini`) where prompt precision matters — reference images, character design, 3D model references, animated sprite refs/poses, backgrounds with precise layout. Use Grok (default) for textures, simple objects, item kits, and simple scenic backgrounds (sky, clouds, abstract).
+Use `gemini-3.1-flash-image`（默认）where prompt precision matters — reference images, character design, 3D model references, animated sprite refs/poses, backgrounds with precise layout. Use `gemini-3.1-flash-lite-image` for textures, simple objects, item kits, and simple scenic backgrounds (sky, clouds, abstract). Spicy/nudity content → wan-2.7 family (wavespeed).
 
 #### Using image references for consistency
 
