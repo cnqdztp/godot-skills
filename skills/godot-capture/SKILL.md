@@ -64,12 +64,36 @@ elif command -v vulkaninfo &>/dev/null; then
     fi
 fi
 
+# --- Resolve the Godot binary ---
+# `godot` is often NOT on PATH — on macOS it lives inside an .app bundle, and
+# on Linux it may be a versioned name. Resolve it once and symlink it to
+# `.capture/godot` so the wrapper never depends on PATH.
+GODOT_BIN=""
+for c in godot godot4 Godot; do
+    if command -v "$c" &>/dev/null; then GODOT_BIN=$(command -v "$c"); break; fi
+done
+if [[ -z "$GODOT_BIN" && "$PLATFORM" == "Darwin" ]]; then
+    # Prefer a plain (GDScript) build; fall back to the mono/.NET one for C# projects.
+    for app in "/Applications/Godot.app" "/Applications/Godot_mono.app" "$HOME/Applications/Godot.app"; do
+        [[ -x "$app/Contents/MacOS/Godot" ]] && { GODOT_BIN="$app/Contents/MacOS/Godot"; break; }
+    done
+fi
+if [[ -z "$GODOT_BIN" ]]; then
+    echo "ERROR: could not find the Godot binary. Set GODOT_BIN and re-run, e.g.:"
+    echo "  ln -sf /path/to/Godot .capture/godot"
+    exit 1
+fi
+ln -sf "$GODOT_BIN" .capture/godot
+echo "Godot binary: $GODOT_BIN"
+
 # --- Persistent run_godot wrapper ---
 cat > .capture/run_godot << 'WRAPPER'
 #!/usr/bin/env bash
 set -o pipefail
 NVIDIA_ICD=/usr/share/vulkan/icd.d/nvidia_icd.json
 NOISE="leaked RID|Leaked instance|ObjectDB instances"
+SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+GODOT="$SELF_DIR/godot"   # symlink written by Setup — never relies on PATH
 cmd=()
 
 # Linux without a display session → xvfb
@@ -79,13 +103,13 @@ fi
 
 # Renderer
 if [[ "$(uname -s)" == "Darwin" ]]; then
-    cmd+=(godot --path . --rendering-method forward_plus)
+    cmd+=("$GODOT" --path . --rendering-method forward_plus)
 elif [[ -f "$NVIDIA_ICD" ]]; then
-    cmd+=(env "VK_ICD_FILENAMES=$NVIDIA_ICD" godot --path . --rendering-method forward_plus)
+    cmd+=(env "VK_ICD_FILENAMES=$NVIDIA_ICD" "$GODOT" --path . --rendering-method forward_plus)
 elif command -v vulkaninfo &>/dev/null && vulkaninfo --summary 2>&1 | grep -Eq "deviceType *= PHYSICAL_DEVICE_TYPE_(DISCRETE_GPU|INTEGRATED_GPU|VIRTUAL_GPU)"; then
-    cmd+=(godot --path . --rendering-method forward_plus)
+    cmd+=("$GODOT" --path . --rendering-method forward_plus)
 else
-    cmd+=(godot --path . --rendering-driver vulkan)
+    cmd+=("$GODOT" --path . --rendering-driver vulkan)
 fi
 
 "${cmd[@]}" "$@" 2>&1 | { grep -v "$NOISE" || true; }
@@ -107,6 +131,52 @@ $GPU_AVAILABLE || echo "WARNING: No GPU — screenshots via lavapipe, video capt
 ```
 
 After setup: source `.capture/env` for `$GPU_AVAILABLE` and `$TIMEOUT_CMD`. Use `.capture/run_godot` instead of bare `godot` for all rendering.
+
+## Two traps that make capture "hang" or come out blank
+
+Both of these cost real time when hit — read before your first run.
+
+1. **`--headless` does NOT render.** In headless mode `get_viewport().get_texture().get_image()` comes back blank/empty, so a script that screenshots the viewport produces nothing. Use headless ONLY for `--import`. For any actual pixels you need an offscreen render: either `--write-movie` (the video path) or run **headful** (no `--headless`) with a script that calls `save_png`. On macOS/Metal and on a GPU-backed Linux box, a headful `run_godot` renders fine offscreen without a visible window.
+
+2. **`--quit-after` is the real exit mechanism — `$TIMEOUT_CMD` is only a backstop.** macOS ships no `timeout`/`gtimeout`, so Setup falls back to a small perl `ptimeout`, and that fallback does **not** reliably kill a Metal Godot process. If you lean on it, a stuck run burns your whole outer wall-clock limit instead of the timeout you asked for. So:
+   - Always pass `--quit-after {N}` (or have the script `quit()` itself). That is what actually ends the run.
+   - Treat `$TIMEOUT_CMD` as a safety net only; do not assume it will fire.
+   - Never wrap capture in a foreground `sleep` to "wait for it" — launch it in the background and poll for the output file instead.
+   - Skip `--headless --import` when `.godot/` already exists and no assets changed; a stray `--import` can open editor layout and stall for minutes.
+
+## Single Still (quick hero / UI shot)
+
+When you just need ONE clean PNG (a landing-page hero, a "does this look right" check) and not a video, skip the movie/ffmpeg machinery. Headful render + a script that stages the frame, saves one PNG, and quits — with `--quit-after` as the backstop.
+
+```gdscript
+# test/capture_still.gd — extends SceneTree
+extends SceneTree
+var main: Node3D
+var frames := 0
+var _done := false
+
+func _initialize() -> void:
+    main = load("res://scenes/main.tscn").instantiate()
+    root.add_child(main)
+
+func _process(_delta: float) -> bool:
+    frames += 1
+    if frames == 60:
+        pass  # stage the shot: position camera, set time-of-day, hide HUD, etc.
+    elif frames == 120 and not _done:
+        _done = true
+        root.get_viewport().get_texture().get_image().save_png("res://screenshots/still.png")
+        print("shot: still")
+        quit()
+    return false
+```
+
+```bash
+# Headful (renders), self-quits via the script, --quit-after as a hard backstop.
+.capture/run_godot --quit-after 200 --script test/capture_still.gd
+```
+
+Run it in the background and poll for `screenshots/still.png` rather than blocking on it. Give the scene enough lead frames (chunk streaming, tweens, `_ready` bootstrap) before the shot frame — a still grabbed too early catches an unloaded world. For a fast edit→look debug loop on UI specifically, `godot-automatic-qa` (inject a one-shot timer, no `.capture/` scaffolding) is lighter than this; use this when you want the shot staged deterministically from a `SceneTree` script.
 
 ## Screenshot First
 
