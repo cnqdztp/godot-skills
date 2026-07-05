@@ -206,7 +206,9 @@ while a sub-window is open also works, but it is more fragile.)
 ## 8. The CXProject addon (ready-made)
 
 `godot-mousePassThrough` — Godot Asset Library #5154, "Mouse Passthrough
-Manager", MIT, Godot 4.6 .NET — implements exactly the pattern above:
+Manager", MIT, Godot 4.6 .NET (source:
+https://github.com/CXProject/godot-mousePassThrough) — implements exactly the
+pattern above:
 `WindowsPassthroughProvider` (Win32) + `DefaultPassthroughProvider` behind an
 `IPassthroughProvider`, plus an optional `PassthroughManager` autoload with a
 QuadTree of clickable shapes.
