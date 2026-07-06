@@ -46,6 +46,35 @@ text buttons; use `TextureButton` when the button *is* a graphic. (A regular
 `Button` with an `icon` is not the same: the Theme's content margins shrink the
 icon — `TextureButton` uses the whole rect.)
 
+### Icon-first controls
+
+Prefer icons over visible text for state, information, emotion, and action
+hints when the icon is recognizable from context. The skill bundles complete
+CC0 asset packs for this:
+
+- `assets/game-icon-pack-svg/no-padding/8-ui/` for common UI actions:
+  `save.svg`, `settings.svg`, `search.svg`, `cross.svg`, `tick.svg`,
+  `visible.svg`, `invisible.svg`, `lock.svg`, `unlock.svg`, arrows, zoom,
+  menu, refresh, warning, info.
+- `assets/game-icon-pack-svg/no-padding/11-symbols/` for symbols and mood:
+  emoji faces, digits, math symbols, currency symbols.
+- `assets/game-icon-pack-svg/no-padding/{1-game,2-items,3-gear,6-buildings}/`
+  for domain-specific HUD and inventory icons.
+- `assets/kenney_ui-pack/PNG/<Color>/<Default|Double>/` or
+  `assets/kenney_ui-pack/Vector/<Color>/` for button shells, arrows, stars,
+  checks, crosses, toggles, sliders, and icon-state artwork.
+
+Use `TextureRect` for passive indicators and `TextureButton` for clickable
+icon controls. Give icon controls stable square dimensions in the `.tscn`
+(`custom_minimum_size`, anchors, and container size flags), so hover/pressed
+states do not resize the layout. Do not replace exact numbers, player names, or
+ambiguous commands with icons; pair those with text or keep text visible.
+
+For a visible text-free action button, use an icon texture and set non-visible
+metadata such as `tooltip_text` or an accessible name if the project has an
+accessibility layer. The visible surface stays icon-only; the semantics remain
+recoverable for hover/help/testing.
+
 ## Layer 3 — local tweaks use `theme_override_*` in the `.tscn`
 
 When one specific node needs to differ from the Theme — a larger heading font, a
@@ -98,6 +127,40 @@ Genuinely data-driven color — e.g. a rarity tier that tints a label by a value
 computed at runtime — is legitimately code. Keep it to that: a small, dynamic,
 per-instance value. It is not a license to build static styling in code.
 
+## Framed and bordered UI
+
+Do not accept raw, unstyled Godot controls as the final UI skin for a game HUD,
+menu, modal, shop, inventory, or settings screen. Establish a framed visual
+surface first, then place layout containers and icon/text content inside it.
+
+Default choices:
+
+- Use `PanelContainer` with `theme_override_styles/panel = StyleBoxTexture` for
+  scalable panels, cards, HUD strips, modal bodies, and framed lists.
+- Use `NinePatchRect` only for a purely decorative frame behind controls when
+  the node does not need container behavior.
+- Use `TextureButton` for art buttons from `kenney_ui-pack`; do not imitate
+  those buttons with code-side colors and borders.
+
+Bundled frame assets:
+
+- `assets/kenney_fantasy-ui-borders/PNG/Default/Panel/` — filled panels.
+- `assets/kenney_fantasy-ui-borders/PNG/Default/Border/` — framed panels.
+- `assets/kenney_fantasy-ui-borders/PNG/Default/Transparent border/` —
+  transparent center frames for overlay panels.
+- `assets/kenney_fantasy-ui-borders/PNG/Default/Divider/` and
+  `Divider Fade/` — separators.
+- `assets/kenney_fantasy-ui-borders/PNG/Double/...` — higher-resolution
+  versions of the same assets.
+- `assets/kenney_fantasy-ui-borders/Vector/fantasy-ui-borders.svg` — vector
+  source if the project needs custom export sizes.
+
+Build the `StyleBoxTexture` in a `.tres` or directly in the `.tscn`, set
+`texture_margin_left/top/right/bottom` to preserve the corners, and keep it in
+the Theme if many panels share it. Use one consistent margin value per asset
+family after checking the PNG dimensions in the editor; do not compute or patch
+these margins from script.
+
 ## Summary
 
 | Need | Where it goes |
@@ -105,4 +168,6 @@ per-instance value. It is not a license to build static styling in code.
 | Default look of `Button` / `Label` / `Panel` / ... | project `Theme` (`.tres`) |
 | A button that is a piece of art | `TextureButton` + texture properties |
 | One node differs from the Theme | `theme_override_*` in the `.tscn` |
+| State/action/emotion hint with clear meaning | Icon asset in `TextureRect` / `TextureButton` |
+| Game panel/card/HUD/modal frame | `PanelContainer` + `StyleBoxTexture` frame asset |
 | Truly runtime-computed color/value | code — but only that |

@@ -1,23 +1,21 @@
 ---
 name: godot-ui-tscn
 description: >-
-  Conventions for authoring UI in Godot 4. Two rules: (1) build every UI
-  component as a `.tscn` scene plus a thin script — author the node tree in the
-  editor, and let the script only do GetNode references, signal wiring, and data
-  binding; never assemble layout with `new Button()` / `new VBoxContainer()` in
-  code. (2) Keep styling in resources with a 3-layer strategy — a project Theme
-  for base controls, `TextureButton` for art-driven buttons, and
-  `theme_override_*` in the `.tscn` for local tweaks; never call `add_theme_*`
-  from script. Use this whenever building or editing any Godot 4 UI — a HUD,
-  panel, menu, modal, dialog, list cell, popup, or button — whenever about to
-  construct a Control node tree in a script, or whenever styling Godot UI. It
-  applies to test and experimental scenes too. Consult it before writing Godot
-  UI code so scenes stay editable in the editor and styling stays consistent.
+  Conventions for authoring Godot 4 UI scenes and styling. Use whenever
+  building or editing any Godot UI: HUDs, panels, menus, modals, dialogs, list
+  cells, popups, buttons, icon-only controls, state/status cues, or game-styled
+  framed interfaces. Rules: build each UI component as a `.tscn` scene plus a
+  thin script, keep static layout in scenes, instantiate only runtime-count
+  items, keep styles in Theme/TextureButton/theme_override resources, prefer
+  icons over visible text for state/information/emotion/action hints when the
+  icon is unambiguous, and build base UI from framed/bordered assets or
+  StyleBoxTexture rather than unstyled default controls. Bundles CC0 Game Icon
+  Pack SVG, Kenney Fantasy UI Borders, and Kenney UI Pack assets for reuse.
 ---
 
 # Godot 4 UI authoring conventions
 
-Two conventions for building UI in Godot 4 that keep scenes editable in the
+Three conventions for building UI in Godot 4 that keep scenes editable in the
 editor, styling consistent across a project, and scripts thin.
 
 Follow them from the very first UI node. The alternative — assembling Control
@@ -31,7 +29,8 @@ becomes a 3000-line file nobody wants to touch.
 ## When to use this
 
 Whenever building or editing any Godot 4 UI: a HUD, a panel, a menu, a modal or
-dialog, a list cell, a popup, a button row. Whenever about to construct a Control
+dialog, a list cell, a popup, a button row, an icon-only control, a state/status
+indicator, or a framed game UI surface. Whenever about to construct a Control
 node tree in a script. Whenever styling Godot UI. This applies to test and
 experimental scenes as much as production — the conventions are about keeping
 work maintainable, which matters everywhere.
@@ -113,14 +112,37 @@ in code can't.
 → `references/styling.md` — the three layers with concrete examples, including
 9-slice `StyleBoxTexture` setup.
 
+## Convention 3 — icons first, framed surfaces first
+
+For status, information, emotion, and action prompts, use a recognizable icon
+instead of visible text whenever the meaning stays clear in context: save,
+close, settings, lock, warning, success, visible/invisible, menu, arrows,
+mood, resource type, item type. Keep visible text only for exact values,
+names, sentences, ambiguous commands, or accessibility-critical labels.
+
+The bundled assets are part of this skill and may be copied into a project:
+
+- `assets/game-icon-pack-svg/` — CC0 SVG icons. Prefer `no-padding/8-ui` for
+  generic UI actions, `no-padding/11-symbols` for symbols/mood, and domain
+  folders such as `1-game`, `2-items`, `3-gear`, or `6-buildings` for game HUDs.
+- `assets/kenney_fantasy-ui-borders/` — CC0 panel, border, divider, and
+  transparent-border art for `PanelContainer` + `StyleBoxTexture`.
+- `assets/kenney_ui-pack/` — CC0 buttons, sliders, checks, arrows, sounds, and
+  font assets for `TextureButton`, toggle/check states, and art-driven controls.
+
+Do not leave UI as raw unstyled Godot defaults unless it is a throwaway debug
+screen. Start from `PanelContainer` / `NinePatchRect` / `StyleBoxTexture` frame
+assets, then place icon controls inside the frame.
+
 ## The anti-pattern to recognize
 
 A script with long stretches of `new Control()`, `AddChild()`,
 `AddThemeStyleboxOverride()`, `AddThemeColorOverride()` — a whole UI built and
 styled imperatively. When you see this, or feel tempted to write it, that's the
-signal to move the structure into a `.tscn` and the style into a `Theme` or
-`theme_override`. Done well, the script collapses to references + signals + data
-binding, and the layout becomes something you can actually open and look at.
+signal to move the structure into a `.tscn`, the style into a `Theme` or
+`theme_override`, and state/action hints into icon resources where possible.
+Done well, the script collapses to references + signals + data binding, and the
+layout becomes something you can actually open and look at.
 
 ## Reference files
 
@@ -128,5 +150,5 @@ binding, and the layout becomes something you can actually open and look at.
   the `.tscn` + script pairing, `unique_name_in_owner` / `%Name`, and the
   runtime-list exception.
 - `references/styling.md` — Convention 2 in depth: the Theme layer, `TextureButton`,
-  `theme_override`, 9-slice `StyleBoxTexture`, and why code-side `add_theme_*` is
-  avoided.
+  `theme_override`, 9-slice `StyleBoxTexture`, icon-first controls, framed UI
+  assets, and why code-side `add_theme_*` is avoided.
