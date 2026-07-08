@@ -109,8 +109,16 @@ style needs to change, change the resource — don't run code to patch it. Style
 in resources can be tuned and previewed in the editor without a rebuild; styles
 in code can't.
 
+These layers also describe a **timeline**, not just a static split. Early on the
+**Theme** carries the whole look — one resource + semantic variations + generic
+CC0 art lets a designer or planner find the feel fast with no bespoke assets. As
+real art arrives, individual elements *graduate* out of the Theme into
+`theme_override` and art-driven controls (`TextureButton`, or a custom `Control` +
+shader tint), while the scene structure stays fixed. The Theme thins but rarely
+disappears. Start Theme-first, graduate elements as art lands.
+
 → `references/styling.md` — the three layers with concrete examples, including
-9-slice `StyleBoxTexture` setup.
+9-slice `StyleBoxTexture` setup, and the prototype-to-production shift.
 
 ## Convention 3 — icons first, framed surfaces first
 

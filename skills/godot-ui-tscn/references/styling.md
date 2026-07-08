@@ -93,6 +93,57 @@ theme_override_styles/panel = SubResource("SbCard")
 
 This keeps the exception visible and editable right where the node lives.
 
+## Two phases: prototype Theme, then art graduation
+
+The three layers are not a flat menu you pick from once — they shift weight across
+a project's life. *Which layer carries the look* tells you what phase you are in.
+
+**Phase 1 — prototype ("find the feel").** Layer 1 (the Theme) does almost all the
+work, and this is where it matters most. One `Theme.tres` with a set of semantic
+variations (`PrimaryButton`, `Card`, `HeadingLabel`, `BadgeAvailable`, …) dresses
+the entire UI at once, and every value tunes live in the editor. This is the
+fastest path from grey-box to "reads like a game," and it is usable by a designer,
+a game planner, or a solo dev with no bespoke art — the generic CC0 packs (Kenney,
+Game-Icon) fill the texture slots. At this stage a themed `Button` / `Label` /
+`PanelContainer` + `StyleBoxTexture` from a generic pack is exactly right; reaching
+for custom `TextureButton`s or hand-drawn frames now is premature. The Theme is the
+feel-finding instrument.
+
+**Phase 2 — art production ("make it ours").** Real art arrives element by element.
+You do NOT rebuild — Convention 1 keeps paying off here: the scene structure is
+untouched, you only swap style *resources* beneath it. Elements *graduate* out of
+the Theme as their art becomes specific:
+
+- A frame / card / panel that now has bespoke art → keep it themed if many surfaces
+  share the new look (swap the stylebox in the `Theme`), or move that one node to
+  `theme_override_styles/panel` with its own `StyleBoxTexture` (Layer 3) if it's a
+  one-off. Same 9-slice mechanism, new PNG — whether the PNG came from a generic
+  pack or the artist re-sliced their own is irrelevant to the mechanism. "Generic
+  assets vs bespoke art" is not a project *type* decided up front; it is just which
+  texture the same stylebox points at in this phase.
+- A button that becomes "a specific picture with its own hover / press states" →
+  graduates to Layer 2: a `TextureButton` with three state textures, or — at the
+  high end — a small custom `Control` subclass wrapping a `TextureRect` + a shader
+  that tints on hover / press. Reach for the custom-`Control` + shader form when you
+  want one art asset recolored programmatically, plus per-control behavior
+  (controller-icon swap, SFX, long-press, focus routing).
+- Generic-pack frames get replaced by the artist's own 9-slice assets through the
+  same `StyleBoxTexture` slots.
+
+The Theme does not vanish in Phase 2; it *thins*. It keeps owning the long tail —
+scrollbars, tooltips, default body text, debug screens — while hero elements move to
+bespoke art. A fully-arted shipped game is the extreme endpoint: nearly everything
+has graduated and the Theme layer has atrophied to near-nothing. Slay the Spire 2
+ships with *no* project Theme at all — every surface is authored `TextureRect` art +
+shader tint + per-node `theme_override_*`, and its buttons are custom `Control`
+subclasses, not `TextureButton`s. That is the *end* state of full art replacement,
+not a starting choice — and not evidence the Theme was wrong to use in Phase 1. It
+was the right prototype instrument; it did its job and got replaced.
+
+**Takeaway:** start Theme-first every time — it is how anyone finds the feel fast —
+then let individual elements graduate to `theme_override` and art-driven controls as
+real art lands, keeping the scene structure fixed the whole way.
+
 ## What this rules out: `add_theme_*` from code
 
 Do **not** style from script:

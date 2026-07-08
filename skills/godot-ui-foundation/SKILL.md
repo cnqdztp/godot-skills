@@ -192,6 +192,8 @@ In order:
 
 `godot-ui-tscn` mandates "use a project Theme + `theme_type_variation` on nodes." This section names *which* variations to create — a portable taxonomy that covers ~95% of admin / dashboard / form UIs.
 
+This taxonomy is the **prototype "find the feel" instrument** — its whole value is dressing an entire UI at once, from generic assets, before any bespoke art exists, so a designer or planner can iterate on feel in the editor. As real art lands, hero elements graduate out of these variations into art-driven controls (see `godot-ui-tscn` → `references/styling.md`, "Two phases"); the taxonomy thins to the long tail but rarely disappears. Build it Theme-first regardless of how art-heavy the final game is.
+
 ### Labels (typography hierarchy)
 
 | Variation | Size | Weight | Use |
