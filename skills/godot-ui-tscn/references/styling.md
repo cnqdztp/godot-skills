@@ -133,10 +133,11 @@ the Theme as their art becomes specific:
 The Theme does not vanish in Phase 2; it *thins*. It keeps owning the long tail —
 scrollbars, tooltips, default body text, debug screens — while hero elements move to
 bespoke art. A fully-arted shipped game is the extreme endpoint: nearly everything
-has graduated and the Theme layer has atrophied to near-nothing. Slay the Spire 2
-ships with *no* project Theme at all — every surface is authored `TextureRect` art +
-shader tint + per-node `theme_override_*`, and its buttons are custom `Control`
-subclasses, not `TextureButton`s. That is the *end* state of full art replacement,
+has graduated and the Theme layer has atrophied to near-nothing. Some mature
+commercial Godot games ship with *no* project Theme at all — every surface is
+authored `TextureRect` art + shader tint + per-node `theme_override_*`, and their
+buttons are custom `Control` subclasses, not `TextureButton`s. That is the *end*
+state of full art replacement,
 not a starting choice — and not evidence the Theme was wrong to use in Phase 1. It
 was the right prototype instrument; it did its job and got replaced.
 

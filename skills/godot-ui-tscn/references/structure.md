@@ -162,9 +162,10 @@ nasty because it's silent and platform-split:
 
 With the marker, the child keeps `unique_name_in_owner` and is reached by `%Name`
 as usual, the editor shows it as editable (artists can tweak it at the parent
-level), and it exports intact. This is the shipped-game pattern — Slay the Spire
-2 uses `[editable path=...]` ~77 times for exactly this (nested glow / health-bar
-/ card content kept artist-tweakable from the parent scene).
+level), and it exports intact. This is the shipped-game pattern — a mature
+commercial Godot game uses `[editable path=...]` dozens of times for exactly this
+(nested glow / health-bar / card content kept artist-tweakable from the parent
+scene).
 
 Prefer keeping a runtime-filled *list* container as a DIRECT child of your screen
 (previous section); reach for Editable Children only when the content genuinely
