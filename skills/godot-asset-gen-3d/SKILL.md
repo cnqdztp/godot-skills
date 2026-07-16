@@ -1,122 +1,92 @@
 ---
 name: godot-asset-gen-3d
 description: |
-  Generate 3D game assets via Tripo3D: convert a PNG to a GLB model (30-60¢), rig biped characters (25¢), and retarget ~100 preset animations (walk/run/idle/attack..., 10¢ each). Includes resume for stalled jobs and shared budget tracking. Use for any 3D model / GLB / rigging / character animation need; 2D images live in the godot-asset-gen skill (use it first to make the model reference image). Requires TRIPO3D_API_KEY.
+  Generate 3D game assets through Tripo3D or Meshy: convert PNG/JPEG references to GLB, rig humanoid characters, apply preset animations, and resume stalled jobs without resubmitting. Use for any 3D model, GLB, rigging, or character-animation need; use godot-asset-gen first when a 2D reference image is needed. Supports TRIPO3D_API_KEY and MESHY_API_KEY.
 ---
 
-# 3D Asset Generator (Tripo3D)
+# 3D Asset Generator
 
-Image → GLB → (biped) rig → retargeted animations. The reference IMAGE is made with
-the **godot-asset-gen** (2D) skill first.
-
-## CLI Reference
-
-Tools live at `.claude/skills/godot-asset-gen-3d/tools/`. Run from the project root.
+Run image → GLB → optional humanoid rig → optional animation through a single CLI.
 Keep runtime-loaded outputs under `assets/`.
 
-### 0. Make the reference image (2D skill)
+## Choose and load a provider
 
-Use godot-asset-gen `image` with the 3D-ref prompt shape:
-```
+Honor an explicit provider choice. Otherwise keep `tripo` as the backward-compatible
+default. Prefer Meshy when the user requests Meshy or low-poly generation.
+
+Before using a provider, read its complete guide:
+
+- **Meshy**: [meshy/reference.md](meshy/reference.md)
+- **Tripo3D**: [tripo/reference.md](tripo/reference.md)
+
+Do not load both provider guides unless comparing providers or auto-detecting an ambiguous
+sidecar. Provider clients live beside their guides; the shared CLI stays under `tools/`.
+
+## Plan paid work
+
+Before the first billable submission, state the chosen provider, every planned stage, and
+the estimated total charge. Ask for confirmation unless the user already approved that
+exact provider and charge in the current turn. Never silently add rigging or animation.
+
+Set only the API key for the chosen provider:
+
+- Meshy: `MESHY_API_KEY`
+- Tripo: `TRIPO3D_API_KEY`
+
+Never print, persist, or commit API keys.
+
+## Prepare the reference image
+
+Use **godot-asset-gen** first when no reference exists. A useful prompt shape is:
+
+```text
 3D model reference of {name}. {description}. 3/4 front elevated camera angle, solid
 white background, soft diffused studio lighting, matte material finish, single centered
 subject, no shadows on background. Any windows or glass should be solid tinted (opaque).
 ```
-Do NOT remove the background — Tripo3D needs the solid white bg for clean separation.
-Review the PNG before converting; a bad image wastes 30+ cents.
 
-### Convert image to static GLB (30-60¢)
+Review the image before conversion. Preserve the solid background, especially for Tripo.
 
-```bash
-python3 .claude/skills/godot-asset-gen-3d/tools/asset_gen_3d.py glb \
-  --image assets/img/car.png -o assets/glb/car.glb
-```
+## Shared CLI
 
-`--quality`: `default` (30¢ — v3.1, std geometry/texture, 30k face cap, PBR) or
-`hd` (60¢ — detailed geometry + HD texture, no face cap)
-`--no-pbr`: only if PBR output looks visibly wrong (rare on v3.1)
-`--face-limit N` (default 30000, sane 10k-50k, ignored by hd). No separate lowpoly
-mode — just shrink the cap.
-
-Writes a `<output>.glb.tripo.json` sidecar with task ids — consumed by `rig`/`resume`.
-
-### Rig a biped character (mesh cost + 25¢)
-
-**Biped only** (rigger v1.0-20240301, humanoid skeletons; quadrupeds must use plain `glb`).
+Set `SKILL_DIR` to the absolute directory containing this `SKILL.md`; do not assume a
+Claude-, Codex-, or repository-specific install path. Run from the Godot project root:
 
 ```bash
-python3 .claude/skills/godot-asset-gen-3d/tools/asset_gen_3d.py rig \
-  --image assets/img/knight_ref.png -o assets/glb/knight_rigged.glb
+# Image to GLB; omit --provider for Tripo
+python3 "$SKILL_DIR/tools/asset_gen_3d.py" glb \
+  --provider meshy --image assets/img/car.png -o assets/glb/car.glb
+
+# Image to rigged humanoid
+python3 "$SKILL_DIR/tools/asset_gen_3d.py" rig \
+  --provider meshy --image assets/img/hero.png -o assets/glb/hero_rigged.glb
+
+# Provider is detected from the rig sidecar
+python3 "$SKILL_DIR/tools/asset_gen_3d.py" retarget \
+  --rigged assets/glb/hero_rigged.glb --animation 92 \
+  -o assets/glb/hero_attack.glb
 ```
 
-Runs `image_to_model → prerigcheck → animate_rig`; aborts clearly if prerigcheck says
-not biped. Same `--quality` / `--no-pbr` flags as `glb`.
+Both riggers are humanoid/biped only. Use plain `glb` for props and quadrupeds.
 
-### Retarget animation (10¢ per clip)
+## Resume instead of resubmitting
+
+After a provider returns a task ID, the CLI immediately stores it in a sidecar before
+polling. A polling timeout does not mean failure; resubmitting can charge twice.
 
 ```bash
-python3 .claude/skills/godot-asset-gen-3d/tools/asset_gen_3d.py retarget \
-  --rigged assets/glb/knight_rigged.glb \
-  --animation preset:biped:walk \
-  -o assets/glb/knight_walk.glb
+python3 "$SKILL_DIR/tools/asset_gen_3d.py" resume \
+  -o assets/glb/car.glb
 ```
 
-Each clip is a separate 10¢ task reusing the rig task id from the sidecar — walk +
-idle + attack = 3 retarget calls, **no re-rigging, no re-generation**. Do not assume
-the preset name survives into the GLB — inspect imported clip names in your pipeline.
+Resume auto-detects `.tripo.json` or `.meshy.json`. If both exist for the same output,
+pass `--provider tripo` or `--provider meshy`.
 
-### Resume a stalled job (free)
+If any billable POST times out before returning its task ID, an older pipeline sidecar may
+exist, but it cannot identify or recover that submission. The CLI marks the output
+`manual_check_required` and refuses automatic retry. Check the provider dashboard before
+running `resume` or submitting again.
 
-Tripo jobs routinely sit at 99% for minutes; a timeout does NOT mean failure — the
-task id is persisted in the sidecar and the spend already recorded. **Do not resubmit
-(double-charges).** Resume instead:
-
-```bash
-python3 .claude/skills/godot-asset-gen-3d/tools/asset_gen_3d.py resume -o assets/glb/car.glb
-```
-
-Works for glb/rig/retarget; no-ops when the sidecar says complete.
-
-### Set budget
-
-```bash
-python3 .claude/skills/godot-asset-gen-3d/tools/asset_gen_3d.py set_budget 500
-```
-Shared `assets/budget.json` with the 2D skill. Only call when the user explicitly
-provides a budget.
-
-### Output format
-
-JSON to stdout: `{"ok": true, "path": "...", "cost_cents": 30}`; progress on stderr
-(redirect to a temp file, read only on failure).
-
-## Cost Table
-
-| Operation | Options | Cost |
-|---|---|---|
-| GLB | default | 30¢ |
-| GLB | hd | 60¢ |
-| Rig | biped | +25¢ on top of mesh |
-| Retarget | per clip | 10¢ |
-
-A full 3D asset (2D ref 7¢ + default GLB 30¢) ≈ 37¢. A rigged biped with
-walk/idle/attack ≈ 92¢.
-
-## Biped presets (pass as `preset:biped:<name>`)
-
-```
-afraid agree angry_01 angry_02 angry_03 basketball_shot bow box_01 box_02
-box_03 cast_a_spell cheer chop clap climb complain_01 complain_02
-cross_body_crunch crossover_dribble cry dance_01 dance_02 dance_03 dance_04
-dance_05 dance_06 defeat_02 defeat_03 depressed dig dive dribble fall fire
-flee_01 flee_02 flip fold_arms football_catch football_save football_pass
-freaky frightened front_kick_01 front_kick_02 frustrated_01 frustrated_02
-golf greet_01 greet_02 greet_03 greet_04 heart_pose hit_to_body_01
-hit_to_body_02 hit_to_head hit_to_side hit_to_stomach hug hurt idle
-jump_down jump jump_rope_01 jump_rope_02 laugh_01 laugh_02 lift_heavy
-look_around make_a_call_01 make_a_call_02 pitch_baseball play_mobile_game
-play_video_game press-up run_upstairs run scared_01 scared_02 scratch shoot
-shovel sing_01 sing_02 sing_03 sing_04 sit slash sob standing_relax surf
-swagger swim turn victory_celebration volleyball wait walk warm_up
-wave_goodbye_01 wave_goodbye_02
-```
+The CLI prints progress to stderr and one JSON result to stdout. Meshy results include
+`credits`; Tripo results include `cost_cents`. Provider sidecars retain task IDs, stages,
+status, and reported usage.

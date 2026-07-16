@@ -26,7 +26,7 @@ auto-trigger from their `description` when relevant.
 | `godot-ui-foundation` | Viewport stretch, HiDPI/Retina scaling, theme taxonomy, variable-font weights. |
 | `godot-input` | Multi-device input architecture (C#/GDScript): a semantic-action normalization bus, Steam Input decoupled behind an always-present Godot fallback (plays without Steam), mouse↔controller device switching, focus-based controller navigation, rebinding **without** mutating `InputMap`, per-controller button glyphs, and the touch seam. |
 | `godot-asset-gen` | Generate 2D images (Gemini / gpt-image-2 / Wan, via official APIs or wavespeed.ai) and animated sprite sheets (Seedance / Wan video + loop detection); background removal, grid slicing, budget-based asset planning. |
-| `godot-asset-gen-3d` | Generate 3D assets via Tripo3D: image → GLB, biped rigging, ~100 preset animation retargets, stalled-job resume, shared budget tracking. |
+| `godot-asset-gen-3d` | Generate 3D assets via Tripo3D or Meshy: image → GLB, humanoid rigging, provider animation libraries, stalled-job resume, and provider-aware usage tracking. |
 | `godot-automatic-qa` | Self-verify your work: a headful screenshot loop (inject a timer, run the project, read the PNG yourself) for visual checks, plus a headless `SceneTree` test script (ASSERT, simulated input) for behavioral checks. |
 | `godot-capture` | Headless screenshot + video capture (Xvfb/Vulkan) for C# or GDScript projects. |
 | `godot-passthrough-game` | Transparent desktop-pet / widget / overlay games and their click-through traps. |

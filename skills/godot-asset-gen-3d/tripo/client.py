@@ -1,4 +1,4 @@
-"""Tripo3D API client.
+"""Tripo3D provider client.
 
 Docs:
   https://platform.tripo3d.ai/docs/generation
@@ -20,6 +20,10 @@ API_BASE = "https://api.tripo3d.ai/v2/openapi"
 MODEL_V31 = "v3.1-20260211"
 
 
+class SubmissionUnknownError(RuntimeError):
+    """The POST may have been accepted, but no task ID was received."""
+
+
 def get_api_key() -> str:
     key = os.environ.get("TRIPO3D_API_KEY")
     if not key:
@@ -34,13 +38,22 @@ def _headers() -> dict:
 def upload_image(image_path: Path) -> str:
     with open(image_path, "rb") as f:
         files = {"file": (image_path.name, f, "image/png")}
-        resp = requests.post(f"{API_BASE}/upload", headers=_headers(), files=files)
+        resp = requests.post(
+            f"{API_BASE}/upload", headers=_headers(), files=files, timeout=60
+        )
     resp.raise_for_status()
     return resp.json()["data"]["image_token"]
 
 
 def _submit_task(payload: dict) -> str:
-    resp = requests.post(f"{API_BASE}/task", headers=_headers(), json=payload)
+    try:
+        resp = requests.post(
+            f"{API_BASE}/task", headers=_headers(), json=payload, timeout=60
+        )
+    except requests.exceptions.Timeout as exc:
+        raise SubmissionUnknownError(
+            f"Tripo {payload.get('type', 'task')} submission timed out before a task ID was received"
+        ) from exc
     if not resp.ok:
         raise RuntimeError(f"Tripo3D task submit failed: HTTP {resp.status_code}: {resp.text}")
     return resp.json()["data"]["task_id"]
@@ -105,7 +118,10 @@ def poll_task(task_id: str, timeout: int = 600, interval: int = 5) -> dict:
     start = time.time()
     url = f"{API_BASE}/task/{task_id}"
     while time.time() - start < timeout:
-        resp = requests.get(url, headers=_headers())
+        try:
+            resp = requests.get(url, headers=_headers(), timeout=60)
+        except requests.exceptions.Timeout as exc:
+            raise TimeoutError(f"Tripo task {task_id} poll request timed out") from exc
         resp.raise_for_status()
         data = resp.json()["data"]
         status = data["status"]
@@ -122,7 +138,10 @@ def download_model(task_result: dict, output_path: Path) -> Path:
     url = out.get("pbr_model") or out.get("model") or out.get("base_model")
     if not url:
         raise ValueError(f"No model URL in output: {list(out.keys())}")
-    resp = requests.get(url)
+    try:
+        resp = requests.get(url, timeout=120)
+    except requests.exceptions.Timeout as exc:
+        raise TimeoutError("Tripo GLB download timed out") from exc
     resp.raise_for_status()
     output_path.write_bytes(resp.content)
     return output_path
