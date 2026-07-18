@@ -3,25 +3,73 @@
   "evals": [
     {
       "id": 0,
-      "name": "multi-device-architecture",
-      "prompt": "I'm building a Godot 4 game in C# — a deckbuilder. I need full gamepad support, but lots of players use mouse + keyboard and some switch back and forth mid-session. I want the mouse cursor to vanish and a menu item to get highlighted the moment they touch the controller, and the cursor to come back when they move the mouse, without the two fighting. How should I structure the input layer so I'm not branching on device type all over my UI code?",
-      "expected_output": "An architecture that normalizes all input to semantic actions (Input.ParseInputEvent) so UI never branches on device; a single source-of-truth device flag (e.g. IsUsingController); mutually-exclusive detectors to avoid thrash; on switch-to-controller warp/hide cursor + grab UI focus, on switch-to-mouse restore cursor + release focus; gameplay/shortcut pipelines stay live regardless of the flag.",
+      "name": "three-device-two-mode-architecture",
+      "prompt": "Godot 4.7, GDScript. My game supports mouse, keyboard, touchscreen, and gamepad at the same time. Keyboard arrows should show focus, ordinary typing should not destroy mouse hover, touch should hide the cursor, and prompts should follow the last physical device. How should the state and event routing be structured?",
+      "expected_output": "Separates Device KBM/TOUCH/PAD from InteractionMode POINTER/NAVIGATION and from capability flags; centralizes raw detection in _input; uses semantic actions and normalized pointer signals; ordinary text keys keep the current interaction mode while ui_* keys select navigation; touch and mouse select pointer; device detection never consumes the triggering event; cursor visibility changes without warp; hover renders only in pointer mode and logical focus only in navigation mode.",
       "files": [],
       "assertions": []
     },
     {
       "id": 1,
-      "name": "steam-input-optional",
-      "prompt": "I want to add Steam Input to my Godot 4 C# game so I get proper Xbox/PlayStation/Switch button-prompt icons and let players remap on the Steam side. But the game also ships on itch.io and players sometimes run it without Steam at all. How do I integrate Steam Input so it's NOT a hard dependency and the game still works perfectly with a plain controller when Steam isn't there?",
-      "expected_output": "A strategy interface with an engine-native (Godot Input Map) implementation that always works, plus a Steam strategy that composes the native one as a private fallback and delegates the whole frame when Steam is unavailable; availability re-checked every frame with SDK exceptions handled; fallback initialized unconditionally; only the SDK strategy constructed; glyphs as bundled assets keyed by abstract button with atlas chosen by controller type so prompts work without Steam.",
+      "name": "native-touch-emulation-isolation",
+      "prompt": "A Godot 4.7 touchscreen tap produces InputEventScreenTouch and an emulated mouse click. Built-in Buttons need touch-to-mouse compatibility, but a custom draggable card handles ScreenTouch directly and fires twice. How should I fix this without breaking ordinary Controls?",
+      "expected_output": "Keeps emulate_mouse_from_touch enabled and emulate_touch_from_mouse disabled in production; treats physical ScreenTouch/ScreenDrag as the canonical touch path; filters pointing events whose device is DEVICE_ID_EMULATION from device ownership and the custom canonical pointer stream even if compatibility mouse arrives first; returns without marking those compatibility events handled so ordinary Controls still receive them; does not require a built-in Button callback to observe TOUCH immediately; custom native-touch Controls ignore the emulated mouse twin; tracks the owning touch index, handles canceled before pressed, and clears ownership on focus loss, hide, exit, modal replacement, and pointer-owner changes.",
       "files": [],
       "assertions": []
     },
     {
       "id": 2,
-      "name": "rebinding-gdscript",
-      "prompt": "Godot 4, GDScript. I'm making a controls settings screen where players can rebind both keyboard keys and gamepad buttons. If they pick a key that's already used I want it to swap with the conflicting action rather than refuse, and the bindings need to persist between sessions. What's the cleanest way to do this — should I be editing the InputMap at runtime?",
-      "expected_output": "Advises against mutating Godot's InputMap at runtime for rebinds; keep your own dictionary mapping action -> key/button; resolve conflicts by swapping (the displaced action inherits the old binding) rather than rejecting; apply at runtime by re-injecting semantic actions via Input.parse_input_event; persist as plain data to your own save file (JSON/ConfigFile), not project.godot; GDScript-appropriate APIs.",
+      "name": "first-navigation-event",
+      "prompt": "A modal opens while the mouse is active. The first gamepad D-pad press only changes the prompt glyph; the second press moves focus. How do I make the first press work?",
+      "expected_output": "Detects navigation intent in _input, changes device and interaction mode, synchronously repairs the top modal's default focus before GUI dispatch continues, emits intent for every qualifying event even when mode is unchanged, and does not call set_input_as_handled merely for a mode switch. The same physical ui_* event then reaches Godot native focus navigation. Deferred focus is reserved for controls not yet visible.",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 3,
+      "name": "slow-mouse-reclaim",
+      "prompt": "After using a controller, fast mouse flicks restore pointer mode but slow deliberate mouse movement never does. The game also runs with different stretch scales. What detector should I use?",
+      "expected_output": "Ignores zero screen_relative and DEVICE_ID_EMULATION motion, accumulates physical mouse screen_relative distance across events, switches to KBM/POINTER after a threshold, resets travel on ownership change, and lets a physical mouse press reclaim immediately without letting a release steal ownership. It does not use a single-event velocity threshold and does not warp the OS cursor. Cursor intent goes through an arbiter so gameplay capture or confinement takes priority over UI device requests.",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 4,
+      "name": "focus-modal-repeat",
+      "prompt": "I need Godot 4.7 controller navigation for nested modal lists, including held-stick repeat and scrolling the focused row into view. What should own focus and repeat?",
+      "expected_output": "Uses native focus_neighbor_* navigation; modal roots use focus_behavior_recursive with only the top enabled; candidates use get_focus_mode_with_override; exact prior focus is stored with WeakRef and restored; focus is repaired only in navigation mode; ScrollContainer ensures focused controls are visible; native input supplies the first edge; GUI-only repeat starts after a delay, uses fresh InputEventAction with Viewport.push_input, emits at most once per frame, and resets on release, device, mode, modal, focus repair, pause, and disconnect.",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 5,
+      "name": "rebinding-and-edge-symmetry",
+      "prompt": "Godot 4.7, GDScript. I need persistent runtime keyboard and gamepad rebinding with swap-on-conflict. Some translated actions remain stuck after rebinding or disconnect. What data and event rules should I use?",
+      "expected_output": "Keeps fixed defaults in InputMap and persists a versioned typed runtime mapping; chooses either runtime InputMap mutation or translation for each device/action path; distinguishes physical_keycode, keycode, and key_label; stores gamepad button or signed axis identity without hardcoding device 0; neutralizes held old controls before applying a new map; swaps conflicts atomically; guards translation recursion; aggregates held state by stable source ID so releasing one of two sources does not release the other; allocates fresh InputEventAction objects; releases sources on disconnect/context change; disables native controller rebinding only while a valid platform input path owns the active controller.",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 6,
+      "name": "gamepad-threshold-disconnect-haptics",
+      "prompt": "My gamepad prompts switch because of stick drift, trigger holds require almost full travel, and disconnecting the active controller can leave the cursor hidden and rumble running. What should InputManager do?",
+      "expected_output": "Tracks the actual actuating event.device rather than controller 0; any valid pad actuation can select PAD, but only ui_* navigation events select NAVIGATION or repair focus, so a trigger or right stick does not steal focus; uses separate stick deadzone, trigger device threshold, and trigger business threshold; reads trigger business values with Input.get_action_raw_strength; listens to joy_connection_changed; on active-pad disconnect stops vibration, releases held actions and repeat, selects a remaining candidate or recovers device/cursor state, and emits prompt changes. Haptics use the active device ID for capability checks and Godot's weak/strong motor order.",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 7,
+      "name": "steam-input-optional-ownership",
+      "prompt": "Steam is initialized, but Steam Input has no live controller handle. My Godot game disables its native controller rebinding and stops reading the plain gamepad. How should the ownership and fallback gates work?",
+      "expected_output": "Separates Steam client ready, Steam Input ready, valid controller handle, active action set, and live ownership; initializes the Godot-native path unconditionally; reads all SDK values into a temporary snapshot and commits only after full success; on partial failure releases Steam sources, clears ownership, and falls back natively in the same frame; suppresses only the correlated native controller while Steam owns it and leaves unrelated pads available; reactivates action sets on reconnect; uses one consistent automatic or explicit SDK update model; does not treat sample VDF files as the product action manifest.",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 8,
+      "name": "touch-capability-osk-affordances",
+      "prompt": "A Steam Deck and a Windows touchscreen sometimes report no touchscreen at startup. I also need settings and text entry to remain reachable without Esc or a hardware keyboard. What capability and UI rules should I use?",
+      "expected_output": "Keeps touch capability separate from current TOUCH ownership and Steam Deck profile; seeds capability from DisplayServer, upgrades it on physical ScreenTouch/ScreenDrag, and treats a platform profile as capability only after native pass-through is explicitly enabled and physically verified; provides visible back/settings/report paths with a global fallback; suppresses hidden touch-only subtrees across focus, mouse, and input processing rather than alpha only; converts the focused Control rectangle to screen coordinates for DisplayServer, disables built-in auto-show when a helper owns the OSK, provides a platform or product OSK fallback when the display-server feature is absent, and validates keyboard height, safe area, scaled controls, and real devices.",
       "files": [],
       "assertions": []
     }

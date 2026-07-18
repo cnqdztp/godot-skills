@@ -1,312 +1,374 @@
 ---
 name: godot-input
-metadata:
-  author: cnzangtianpei@gmail.com
 description: >-
-  Architecture for Godot 4 input when a game must support gamepad AND
-  mouse/keyboard at the same time — and optionally Steam Input — without the
-  three paths fighting each other: a semantic-action "normalization bus" that turns
-  every raw device event into one set of gameplay actions via
-  Input.ParseInputEvent; decoupling an optional platform SDK (Steam Input) from
-  the engine-native gamepad reader with a strategy + always-present fallback so
-  the game is fully playable WITHOUT Steam; mouse↔controller device-mode
-  switching driven by a single source-of-truth flag (warp/hide cursor, grab UI
-  focus) with anti-thrash detectors; controller menu navigation built on Godot's
-  native focus system (FocusNeighbor*, GrabFocus); runtime key/button rebinding
-  that NEVER mutates Godot's InputMap (keep your own dictionary, swap-on-conflict,
-  persist to your own save file); per-controller button-prompt glyphs; and where
-  the touch seam is if you ever need it. Use this whenever you add controller /
-  gamepad support, must support multiple input devices simultaneously, integrate
-  Steam Input, implement input remapping / rebinding UI, switch between mouse and
-  gamepad, show platform-correct button-prompt icons, or wire up controller UI
-  focus navigation in Godot 4 — in C# or GDScript. Consult it BEFORE designing an
-  input layer so the device paths are decoupled from the start.
+  Godot 4.7 multi-device input architecture for touchscreen, mouse, keyboard,
+  gamepad, and optional Steam Input. Covers device-family and interaction-mode
+  state, native touch plus compatibility-event isolation, semantic actions,
+  modal focus routing, navigation repeat, active-controller tracking, runtime
+  rebinding, prompt glyphs, virtual keyboards, haptics, and regression tests
+  for GDScript projects.
 ---
 
-# Godot 4 Input Architecture (multi-device, SDK-optional)
+# Godot 4.7 multi-device input
 
-Most Godot input tutorials stop at "make an action in the Input Map, call `Input.is_action_pressed`". That falls apart the moment a real game needs **gamepad and mouse/keyboard live at the same time**, **platform-correct button glyphs**, **runtime rebinding**, and an **optional platform SDK** (Steam Input) that may or may not be present. This skill shows how to solve all five in Godot 4 (C#), and what to copy vs. avoid.
+## Core contract
 
-Examples are C#; each pattern has a **GDScript callout**. The five patterns are independent — read the one you need.
+- One input manager owns global device detection and the normalized pointer stream. Controls still
+  read local raw events in `_gui_input` when their interaction requires it.
+- Gameplay and UI use semantic actions and normalized pointer signals.
+- Default bindings live in `InputMap`.
+- UI edges are event-driven. Poll only held and analog state.
+- Device detection never consumes the event that caused a mode switch.
+- Physical and compatibility events remain distinguishable by event device. SDK, rebinding, replay,
+  automation, and test adapters retain their source IDs before aggregate semantic injection.
+- Native Godot gamepad input remains complete when a platform SDK is unavailable.
+- The input manager and pause-menu router use `PROCESS_MODE_ALWAYS` when input must work while paused.
 
-The mental model: **one bus, many sources.**
+## Independent state
 
-```
-keyboard ─┐
-mouse  ───┤                                   ┌─ UI / gameplay (only ever
-gamepad ──┤── normalize to SEMANTIC actions ──┤   call IsActionPressed
-Steam ────┘   via Input.ParseInputEvent       └─ Godot focus nav (ui_* actions)
-```
+Keep these values separate:
 
-Downstream code never asks "which device?" — it asks "did the *attack* action fire?". Device identity lives in exactly one place (a device-mode flag) and only drives UX (cursor, focus), never gameplay logic.
+| State | Values | Consumers |
+|---|---|---|
+| Device family | `KBM`, `TOUCH`, `PAD` | glyphs, cursor, active controller, haptics |
+| Interaction mode | `POINTER`, `NAVIGATION` | hover, focus visuals, focus repair |
+| Capabilities | touch available, virtual keyboard, Steam Deck profile, Steam Input ownership | feature visibility and platform paths |
 
----
+`KBM` includes two interaction modes. Mouse movement selects `POINTER`; keyboard navigation actions
+select `NAVIGATION`. Ordinary text entry keeps the current interaction mode.
 
-## Pattern 1 — The normalization bus (do this first)
+Touch capability does not imply that touch is the active device. A physical touch event does not
+imply a Steam Deck environment. Steam Deck detection does not imply that Steam Input owns actions.
 
-**Problem:** if each screen reads raw `InputEventKey` / `InputEventJoypadButton` / SDK polling, you get N×M branching and rebinding is impossible.
+```gdscript
+enum Device { KBM, TOUCH, PAD }
+enum InteractionMode { POINTER, NAVIGATION }
 
-**Solution:** translate every raw input into a **semantic action** (`attack`, `accept`, `cancel`, …) and re-inject it with `Input.ParseInputEvent`. The whole game listens only to semantic actions.
+signal device_changed(device: int)
+signal interaction_mode_changed(mode: int)
+signal ui_navigation_intent
+signal pointer_pressed(position: Vector2, touch_index: int)
+signal pointer_moved(position: Vector2, relative: Vector2, touch_index: int)
+signal pointer_released(position: Vector2, touch_index: int)
+signal native_touch_available
 
-```csharp
-// Capture raw input in _UnhandledKeyInput / _UnhandledInput, NOT _Input —
-// so a focused LineEdit / text field consumes the key first.
-public override void _UnhandledKeyInput(InputEvent e)
-{
-    if (e is not InputEventKey k || k.IsEcho()) return;
-    foreach (var (action, key) in _keyboardMap)           // action -> Key
-        if (k.Keycode == key)
-            // ALLOCATE A FRESH EVENT EVERY TIME — see footgun below.
-            Input.ParseInputEvent(new InputEventAction { Action = action, Pressed = e.IsPressed() });
-}
-```
-
-**Make your nav actions the engine's built-in `ui_*` actions.** Define `accept = "ui_accept"`, `up = "ui_up"`, `cancel = "ui_cancel"`, etc. Then Godot's *built-in* focus navigation rides the same bus for free (Pattern 4) — you don't reimplement directional menu movement.
-
-**Two-layer remapping, kept separate.** Don't bake the semantic mapping into each device reader. Use two hops:
-1. **raw → raw** normalization inside a device reader (e.g. left-stick → d-pad, so stick and d-pad share one code path).
-2. **raw → semantic** in one central place (`_UnhandledInput`), driven by the user-rebindable dictionary.
-
-The re-injected raw event from step 1 re-enters `_UnhandledInput` and becomes a semantic action in step 2. One mapping table, not one per device.
-
-> ### ⚠️ Footgun: never reuse a mutable `InputEvent` instance
-> It's tempting to cache one `InputEventAction`/`InputEventJoypadMotion` and mutate `.Pressed`/`.AxisValue` before each `ParseInputEvent` to save allocations. **Don't.** Godot queues/forwards the *reference*; a later mutation (the matching release, or next frame) can corrupt what a consumer reads, because the pipeline does not deep-copy. Allocate a fresh `new InputEventAction { … }` per injection — do the per-event allocation in your one input-manager node, not inside each device strategy.
-
-> **GDScript:** `func _unhandled_key_input(e):` → `Input.parse_input_event(InputEventAction.new())` after setting `.action` / `.pressed`. Same rule: build a *new* `InputEventAction.new()` each time; don't keep one around and mutate it.
-
----
-
-## Pattern 2 — Gamepad WITHOUT Steam: strategy + always-present fallback
-
-**Problem:** you want Steam Input (great remapping, glyphs, Deck support) but the game must run identically with **no Steam at all** — other stores, dev runs, Steam offline, no controller. Steam must be *decoupled*, not load-bearing.
-
-**Solution:** a strategy interface with two implementations, where the SDK strategy **composes** the engine-native one as a private fallback and **re-checks availability every frame**.
-
-```csharp
-interface IControllerInputStrategy
-{
-    Task Init();
-    void ProcessInput();                 // called once per frame
-    bool ShouldAllowControllerRebinding { get; }
-    Texture2D GetHotkeyIcon(string action);
-    // ...config / default-map accessors
-}
-
-// Engine-native: ALWAYS works, zero SDK dependency. The safety net.
-class GodotControllerStrategy : IControllerInputStrategy
-{
-    public bool ShouldAllowControllerRebinding => true;       // we own remapping
-    public void ProcessInput()
-    {
-        // read pads purely through the Godot Input Map, and synthesize
-        // stick -> dpad so navigation has ONE path (Pattern 1, layer 1):
-        foreach (var (stick, dpad) in _stickToDpad)
-            if (Input.IsActionJustPressed(stick))
-                Input.ParseInputEvent(new InputEventAction { Action = dpad, Pressed = true });
-    }
-    // pad type via Input.GetJoyName(0).Contains("DualSense"/"Xbox"/...) -> per-platform config
-}
-
-// SDK-rich: delegates the ENTIRE frame to the fallback when Steam is down.
-class SteamControllerStrategy : IControllerInputStrategy
-{
-    readonly IControllerInputStrategy _fallback = new GodotControllerStrategy();
-    InputHandle? _device;
-
-    public async Task Init()
-    {
-        if (Steam.Initialized) { /* SteamInput.Init(); cache action handles */ }
-        await _fallback.Init();                 // ALWAYS init the fallback, unconditionally
-    }
-
-    public void ProcessInput()
-    {
-        if (!Steam.Initialized) { _fallback.ProcessInput(); return; }   // gate 1
-        RefreshDeviceEverySecond();
-        if (_device is null) { _fallback.ProcessInput(); return; }      // gate 2
-        try { SteamInput.RunFrame(); PollDigital(); PollAnalog(); }
-        catch (InvalidOperationException) { _device = null; _fallback.ProcessInput(); } // gate 3
-    }
-
-    public bool ShouldAllowControllerRebinding =>
-        Steam.Initialized ? false : _fallback.ShouldAllowControllerRebinding;  // Steam owns remap
-}
+var active_device := Device.KBM
+var interaction_mode := InteractionMode.POINTER
+var active_pad_id := -1
+var last_pointer_device := Device.KBM
+var supports_touch := false
 ```
 
-Key rules, each load-bearing:
-- **Construct only the SDK strategy.** The manager never picks between them; the native reader is reached *only* through the fallback. One wiring, no branching at the call site.
-- **Re-evaluate availability every frame**, not once at boot. Controllers disconnect; SDK calls throw. Three gates: SDK not initialized → no live device → exception (and clear the handle so next frame retries cleanly).
-- **`Init()` awaits the fallback unconditionally** so the engine-native reader is ready even when Steam never comes up.
-- **The fallback must be a complete, standalone reader** (full Godot Input Map path). If it's a stub, "no Steam" means "broken game".
-- **Delegate the whole interface**, not just `ProcessInput` — rebinding capability, glyph lookup, configs all fall back too.
+## Event stages
 
-The manager exposes capabilities with null-coalescing defaults so UI never branches on the platform:
-```csharp
-public bool ShouldAllowControllerRebinding => _strategy?.ShouldAllowControllerRebinding ?? true;
+Godot propagates a viewport event in this order:
+
+1. `Node._input`
+2. `Control._gui_input`
+3. `Node._shortcut_input`
+4. `Node._unhandled_key_input`
+5. `Node._unhandled_input`
+
+Use each stage for one responsibility:
+
+| Stage | Responsibility |
+|---|---|
+| `_input` | physical device detection, interaction-mode changes, native pointer normalization, synchronous focus preparation |
+| `_gui_input` | control-local clicks, drags, accepts, and `accept_event()` |
+| `_shortcut_input` | global shortcuts after GUI has had first refusal |
+| `_unhandled_key_input` | gameplay keys that text controls did not consume |
+| `_unhandled_input` | remaining semantic edges and synthetic-action fallback |
+
+`Viewport.set_input_as_handled()` and `Control.accept_event()` change propagation only. They do not
+change `Input.is_action_pressed()` state. Call them only after a control or router owns the action.
+
+## Device and interaction detection
+
+```gdscript
+const STICK_DEADZONE := 0.4
+const TRIGGER_DEVICE_THRESHOLD := 0.3
+const MOUSE_RECLAIM_DISTANCE := 10.0
+
+var _mouse_travel := 0.0
+
+func _input(event: InputEvent) -> void:
+	if _is_emulated_pointing_event(event):
+		return # do not consume; ordinary Controls still need the compatibility event
+
+	var navigation_intent := false
+	if event is InputEventScreenTouch:
+		_set_touch_capability()
+		_set_device(Device.TOUCH)
+		_set_interaction_mode(InteractionMode.POINTER)
+		_route_screen_touch(event)
+	elif event is InputEventScreenDrag:
+		_set_touch_capability()
+		_set_device(Device.TOUCH)
+		_set_interaction_mode(InteractionMode.POINTER)
+		_route_screen_drag(event)
+	elif event is InputEventMouseButton:
+		if event.pressed:
+			_set_device(Device.KBM)
+			_set_interaction_mode(InteractionMode.POINTER)
+			_mouse_travel = 0.0
+		_route_mouse_button(event)
+	elif event is InputEventMouseMotion:
+		if not event.screen_relative.is_zero_approx():
+			if active_device == Device.KBM:
+				_mouse_travel = 0.0
+				_set_interaction_mode(InteractionMode.POINTER)
+			else:
+				_mouse_travel += event.screen_relative.length()
+				if _mouse_travel >= MOUSE_RECLAIM_DISTANCE:
+					_mouse_travel = 0.0
+					_set_device(Device.KBM)
+					_set_interaction_mode(InteractionMode.POINTER)
+		if active_device == Device.KBM:
+			_route_mouse_motion(event)
+	elif event is InputEventKey and event.pressed and not event.echo:
+		_set_device(Device.KBM)
+		if _is_keyboard_navigation(event):
+			_set_interaction_mode(InteractionMode.NAVIGATION)
+			navigation_intent = true
+	elif event is InputEventJoypadButton and event.pressed:
+		_set_active_pad(event.device)
+		_set_device(Device.PAD)
+		if _is_ui_navigation_event(event):
+			_set_interaction_mode(InteractionMode.NAVIGATION)
+			navigation_intent = true
+	elif event is InputEventJoypadMotion \
+			and _is_pad_motion_actuated(event as InputEventJoypadMotion):
+		_set_active_pad(event.device)
+		_set_device(Device.PAD)
+		if _is_ui_navigation_event(event):
+			_set_interaction_mode(InteractionMode.NAVIGATION)
+			navigation_intent = true
+
+	if navigation_intent:
+		ui_navigation_intent.emit() # synchronous; do not mark the event handled
+
+func _is_emulated_pointing_event(event: InputEvent) -> bool:
+	return event.device == InputEvent.DEVICE_ID_EMULATION and (
+		event is InputEventMouseButton
+		or event is InputEventMouseMotion
+		or event is InputEventScreenTouch
+		or event is InputEventScreenDrag
+	)
+
+func _is_pad_motion_actuated(event: InputEventJoypadMotion) -> bool:
+	if event.axis in [JOY_AXIS_TRIGGER_LEFT, JOY_AXIS_TRIGGER_RIGHT]:
+		return event.axis_value > TRIGGER_DEVICE_THRESHOLD
+	return absf(event.axis_value) > STICK_DEADZONE
+
+func _is_ui_navigation_event(event: InputEvent) -> bool:
+	for action in [&"ui_up", &"ui_down", &"ui_left", &"ui_right", &"ui_accept", &"ui_cancel"]:
+		if event.is_action_pressed(action):
+			return true
+	return false
 ```
 
-> **GDScript:** no interfaces, but the same shape works with duck typing: two scripts (`godot_controller_strategy.gd`, `steam_controller_strategy.gd`) exposing `process_input()`, `init()`, `should_allow_controller_rebinding()`; the Steam one holds `var _fallback = GodotControllerStrategy.new()` and calls `_fallback.process_input()` under the same three gates. Steam Input itself needs GDExtension (e.g. GodotSteam) — the decoupling pattern is identical.
+Mouse presses and wheel input reclaim pointer ownership immediately. A release that closes an
+already-owned mouse gesture does not reclaim ownership. Mouse motion uses accumulated unscaled travel;
+a per-event velocity threshold misses slow deliberate motion. Ignore zero-screen-relative motion because
+Godot and the operating system may emit it without physical movement.
 
-Concrete Steam Input wiring (action sets, digital/analog polling, origins → glyphs, when exactly to fall back) lives in **`references/steam-input.md`** — read it only when you actually integrate Steam.
+Do not move the operating-system cursor during device changes. Publish cursor intent to one cursor
+policy arbiter: UI mode requests `Input.MOUSE_MODE_VISIBLE` for `KBM` and `MOUSE_MODE_HIDDEN` for
+touch or pad; gameplay and cutscene requests for captured, confined, or hidden cursor states take
+priority. Resolve stale hover in UI feedback state, not with `warp_mouse()`.
 
----
+## Pointer normalization
 
-## Pattern 3 — Mouse/keyboard AND gamepad at the same time
+- Set `active_device` before emitting the first touch pointer signal.
+- Track an owning touch `index` for single-finger interactions.
+- Treat `InputEventScreenTouch.canceled` as release.
+- Clear an owning touch on window focus loss, node hide or exit, modal replacement, and pointer-owner
+  changes.
+- In `_input`, pointer `position` is viewport-local. In `_gui_input`, it is local to the receiving
+  `Control`.
+- Use `relative` for movement in content-scaled UI coordinates.
+- Use `screen_relative` and `screen_velocity` for physical thresholds, aiming, and sensitivity.
+- Store per-index state for multi-touch and gestures.
+- Do not merge every finger into one `pointer_pressed` boolean.
 
-**Problem:** both devices are always plugged in. You need the cursor to disappear and UI focus to appear the instant the player touches the stick, and the cursor to come back the instant they wiggle the mouse — without the two fighting (thrash).
+Keep `input_devices/pointing/emulate_mouse_from_touch=true` for ordinary Godot controls. Filter its
+`DEVICE_ID_EMULATION` mouse twin from device ownership and from any custom control that already
+processed native touch. Keep `emulate_touch_from_mouse=false` in production.
 
-**Solution:** one authoritative bool `IsUsingController`, and **exactly one detector running per frame**, chosen by the current mode. The *active* device can't re-trigger its own switch, so you need no timers or debouncing.
+Detailed touch, OSK, and touch-only UI rules: `references/touch-and-emulation.md`.
 
-```csharp
-public bool IsUsingController { get; private set; }
+## Semantic actions
 
-public override void _Input(InputEvent e)
-{
-    if (IsUsingController) DetectMouse(e);     // only watch for the OTHER device
-    else                   DetectController(e);
-}
+Define stable actions such as:
 
-void DetectController(InputEvent e)
-{
-    if (!_allControllerActions.Any(a => e.IsActionPressed(a))) return;
-    IsUsingController = true;
-    _stashedMouse = DisplayServer.MouseGetPosition() - DisplayServer.WindowGetPosition();
-    GetViewport().WarpMouse(Vector2.One * -1000f);     // hide cursor offscreen
-    ActiveScreen.FocusOnDefaultControl();              // give the stick something to land on
-    EmitSignal(SignalName.ControllerDetected);
-    GetViewport().SetInputAsHandled();                 // controller edge only
-}
+- `ui_up`, `ui_down`, `ui_left`, `ui_right`, `ui_accept`, `ui_cancel`
+- `confirm`, `cancel`, `menu`, `report_bug`
+- `shoulder_left`, `shoulder_right`, `trigger_left`, `trigger_right`
 
-void DetectMouse(InputEvent e)
-{
-    bool moved = e is InputEventMouseMotion m && m.Velocity.LengthSquared() > 100f; // squared vs squared, no sqrt
-    if (e is not InputEventMouseButton && !moved) return;
-    IsUsingController = false;
-    Input.WarpMouse(_stashedMouse);                    // restore where the cursor was
-    GetViewport().GuiReleaseFocus();
-    EmitSignal(SignalName.MouseDetected);
-}
+Give core navigation, confirm, cancel, and menu actions a keyboard fallback unless the action is
+intentionally device-exclusive.
+
+Use native `ui_*` actions for `Control` focus navigation. Keep gameplay action names separate where
+one physical input has different routing semantics. A physical A/Enter event may match both
+`ui_accept` and `confirm`; collapse it to one logical confirm edge before emitting a custom signal.
+
+For external SDK, runtime-rebinding, replay, automation, or test translation, aggregate held state by
+source before injecting global semantic edges:
+
+```gdscript
+var _digital_sources: Dictionary = {} # action -> {source_id: true}
+var _injecting := false
+
+func set_action_source(action: StringName, source_id: StringName, pressed: bool) -> void:
+	if _injecting:
+		return
+	var sources: Dictionary = _digital_sources.get(action, {})
+	var was_pressed := not sources.is_empty()
+	if pressed:
+		sources[source_id] = true
+	else:
+		sources.erase(source_id)
+	_digital_sources[action] = sources
+
+	var is_pressed := not sources.is_empty()
+	if was_pressed == is_pressed:
+		return
+	var event := InputEventAction.new()
+	event.action = action
+	event.pressed = is_pressed
+	event.strength = 1.0 if is_pressed else 0.0
+	_injecting = true
+	Input.parse_input_event(event)
+	_injecting = false
 ```
 
-Why it works and what to copy:
-- **Single source of truth.** Everything else (cursor visibility, focus grabbing, glyph vs. no-glyph) reads `IsUsingController`; nothing else stores device state.
-- **Velocity threshold** on mouse motion (compare `LengthSquared()` to a squared constant) so a tiny bump/drift doesn't yank focus away from a controller user.
-- **Stash-and-restore the cursor** using window-relative coords (`MouseGetPosition() - WindowGetPosition()`) so it survives HiDPI / windowed offsets.
-- **Gameplay pipelines stay device-agnostic.** `_UnhandledInput` / `_UnhandledKeyInput` run regardless of the flag — keyboard shortcuts always fire even in "controller mode". The flag governs **cursor + focus UX only**, never whether an action is accepted. This is what makes the two truly simultaneous.
+- Give every physical or platform source a stable ID within its adapter.
+- Remove that source from every held action on disconnect, context change, or adapter failure.
+- Aggregate analog sources explicitly; define whether strongest magnitude, most recent source, or a
+  domain-specific combination owns the semantic value.
+- Allocate a new event for each edge.
+- Emit release for every injected press that enters global action state.
+- Guard against translating an injected event a second time.
+- `Input.action_press()` changes polled state but does not call `_input`.
+- `Viewport.push_input()` is suitable for GUI-only repeat that must not pollute global held state.
 
-A separate cursor manager toggles visibility off the signals, **AND-ed with any other reason to hide** (e.g. a cutscene):
-```csharp
-Input.MouseMode = (!IsUsingController && _shouldShowCursor)
-    ? Input.MouseModeEnum.Visible : Input.MouseModeEnum.Hidden;
+Runtime rebinding rules: `references/rebinding.md`.
+
+## UI focus and modal routing
+
+- Use native `focus_neighbor_*` and `focus_mode` for directional navigation.
+- Build neighbors after dynamic lists and grids are populated.
+- Register each modal root with a default focus control.
+- Set the top modal root to `FOCUS_BEHAVIOR_ENABLED` and background modal roots to
+  `FOCUS_BEHAVIOR_DISABLED` through `focus_behavior_recursive`.
+- Validate candidates with `get_focus_mode_with_override()`, visibility, and ancestry.
+- Preserve the exact previous focus with a `WeakRef` and restore it when a nested modal closes.
+- Repair missing, hidden, freed, or escaped focus only in `NAVIGATION` mode.
+- Repair focus synchronously on every navigation intent, including repeated intent while the device
+  and mode remain unchanged.
+- Let the same physical event continue to native `ui_*` handling after focus repair.
+- In `ScrollContainer`, call `ensure_control_visible()` when focus changes.
+
+Render hover only in `POINTER` mode and logical focus only in `NAVIGATION` mode. Clear transient
+pressed and hover state on ownership changes. Touch has press state but no persistent hover.
+
+Detailed modal, repeat, confirm, and cancel routing: `references/focus-routing.md`.
+
+## Gamepad state
+
+- Record `event.device` from the pad event that actually actuated input.
+- Do not assume device ID `0`; connected-pad order is not stable across restarts.
+- Use `Input.get_connected_joypads()` only to seed a candidate before the first pad event.
+- Listen to `Input.joy_connection_changed`.
+- On active-pad disconnect: stop vibration, select a remaining candidate, clear held/repeat state,
+  and restore the most recent valid pointer family when no pad remains.
+- Use `Input.get_action_raw_strength()` for trigger business thresholds. Action deadzones otherwise
+  remap the physical travel before the business threshold is applied.
+- Track stick deadzone, trigger device-ownership threshold, and trigger activation threshold as
+  separate values.
+- Resolve glyph brand from `Input.get_joy_info(active_pad_id)` vendor, product, raw-name, and Steam
+  index data when available; use `Input.get_joy_name(active_pad_id)` matching only as fallback.
+
+## Prompt glyphs and haptics
+
+Use semantic glyph IDs and device sets:
+
+- keyboard/mouse
+- touch
+- Xbox
+- PlayStation
+- Nintendo
+
+Missing glyphs are valid. Hide the corresponding prompt row instead of rendering an empty frame.
+Emit `device_changed` when the active family changes and when the active pad brand changes.
+
+Centralize vibration. Godot's argument order is weak motor, strong motor:
+
+```gdscript
+Input.start_joy_vibration(active_pad_id, weak, strong, duration)
 ```
 
-> **GDScript:** `func _input(e):` with `if is_using_controller: _detect_mouse(e) else: _detect_controller(e)`. Use `get_viewport().warp_mouse()`, `get_viewport().gui_release_focus()`, `get_viewport().set_input_as_handled()`, `Input.mouse_mode = Input.MOUSE_MODE_HIDDEN`. Emit `controller_detected` / `mouse_detected` signals for the cursor node.
+Use explicit durations or call `stop_joy_vibration()`. Stop motors on disconnect, pause transitions,
+and shutdown. Check `active_pad_id >= 0 and Input.has_joy_vibration(active_pad_id)` before exposing
+haptic settings.
 
----
+Steam Input lifecycle, ownership, action manifests, and native fallback:
+`references/steam-input.md`.
 
-## Pattern 4 — Controller menu navigation = Godot's native focus system
+## Touch-only controls and text entry
 
-**Don't build a custom navigation graph.** Because nav actions ARE `ui_up/ui_down/ui_left/ui_right/ui_accept/ui_cancel` (Pattern 1), Godot's engine focus traversal already moves the highlight for you. You only:
+- Capability controls whether touch support exists.
+- Active device controls current prompt and interaction ownership.
+- Critical back, settings, and report actions need a visible touch path on every touch-reachable
+  screen. A persistent fallback may yield to a visible scene-owned control.
+- Alpha-only hiding does not disable hit testing, focus, or input callbacks.
+- A suppressed subtree releases focus and disables mouse, focus, shortcut, handled, and unhandled
+  input paths; restore the exact prior state when shown or detached.
+- Suppress dynamic descendants after their `_ready` callback has established final input state.
+- Show the native virtual keyboard only when the display server supports it and the active user is
+  not typing with physical keyboard/mouse; otherwise use the platform or product OSK adapter.
+- Hide the virtual keyboard on focus exit and submission; reposition content using the reported
+  keyboard height and safe area.
 
-1. **Wire the focus graph at layout time** — set each control's `FocusNeighborTop/Bottom/Left/Right` (NodePaths) and `FocusMode`. For grids, compute neighbors in code; self-point left/right on a vertical list so the stick can't fall off the edge.
-2. **Grab initial focus — but only in controller mode**, and defer if the control isn't in the tree yet:
-   ```csharp
-   public static void TryGrabFocus(this Control c)
-   {
-       if (!Manager.IsUsingController) return;            // mouse users aren't focus-locked
-       if (c.IsVisibleInTree()) c.GrabFocus();
-       else Callable.From(c.GrabFocus).CallDeferred();
-   }
-   ```
-3. **React to focus** via the `FocusEntered` / `FocusExited` signals for highlight (same handlers can serve mouse `MouseEntered` / `MouseExited`, unifying hover and focus into one "is highlighted" state).
-4. **Restrict navigation** for modal selections (e.g. "pick a target"): set `FocusMode = All` only on valid controls, `None` on the rest, and loop the neighbors so the stick stays inside the valid set; restore afterward.
+## Failure matrix
 
-On screen change: re-grab the default control's focus *deferred* in controller mode; re-warp the cursor in mouse mode. Keep both coherent across transitions.
+| Symptom | Check |
+|---|---|
+| First pad direction only changes prompts | mode-switch event was consumed, or focus repair was deferred |
+| One touch activates twice | native touch and emulated mouse both entered custom logic |
+| First touch callback sees KBM | device state was updated after pointer signal emission |
+| Slow mouse never reclaims pointer | per-event velocity threshold used instead of accumulated travel |
+| Cursor disappears after pad disconnect | active pad and cursor state were not recovered |
+| Hover and focus highlight appear together | device family used where interaction mode was required |
+| Trigger activates too late | deadzone-adjusted strength used instead of raw strength |
+| Navigation remains held | injected press has no release |
+| Background modal accepts focus | child `focus_mode` was changed without recursive modal isolation |
+| Touch-only control is invisible but clickable | only alpha or visibility presentation changed |
+| Drag sensitivity changes with stretch scale | `relative` used for a physical-distance calculation |
+| Steam client is running but controller is inert | SDK readiness was treated as an active input handle |
 
-> **GDScript:** `control.focus_neighbor_top = ^"../Other"`, `control.focus_mode = Control.FOCUS_ALL`, `control.grab_focus()`, `control.focus_entered.connect(...)`. Gate `grab_focus()` on your `is_using_controller` flag; defer with `control.grab_focus.call_deferred()` when not yet visible.
+## Verification
 
----
+Automated tests must cover:
 
-## Pattern 5 — Rebinding WITHOUT mutating Godot's InputMap
+- touch, mouse, keyboard, joy button, stick, trigger, emulated pointing, and injected action events;
+- touch-to-mouse compatibility without duplicate canonical pointer signals;
+- physical touch upgrading a false-negative touch capability probe;
+- first touch ownership before callbacks;
+- slow accumulated mouse reclaim and immediate mouse-click reclaim;
+- keyboard navigation versus ordinary text keys within the `KBM` family;
+- stick and trigger boundary values;
+- first navigation event, same-mode focus repair, nested modal restore, and background focus blocking;
+- GUI-only navigation repeat, one step per frame, reset on release/device/modal changes;
+- cancel/menu arbitration and handled propagation;
+- active pad IDs other than `0`, disconnect, reconnect, and brand changes;
+- hidden touch subtree state, dynamically added children, and detached-child restoration;
+- glyph presence and absence for every device set;
+- SDK unavailable, initialized-without-handle, active, disconnected, and exception fallback states;
+- window focus loss releases owned gestures and injected held actions, clears repeat, and stops haptics.
 
-**Problem:** `InputMap.action_add_event` / `action_erase_events` mutate global engine state, are awkward to serialize, and make non-destructive "swap" UX hard.
-
-**Solution — an indirection layer with zero `InputMap` mutation anywhere:**
-
-1. **In `project.godot`**, define your real gameplay actions with **empty event arrays** (`mega_attack={"events":[]}`). Define a separate set of **fully-bound physical actions** for hardware you don't remap (`controller_face_button_south` → its joypad button). The physical actions stay bound because the translator matches on them; the gameplay actions stay empty because they're filled at runtime.
-2. **Keep two C# dictionaries**: `action → Key` (keyboard) and `gameAction → physicalActionName` (controller).
-3. **Resolve conflicts by SWAP, not reject** — the action currently holding the requested key inherits the rebinder's *old* key. No dead-ends, no error dialogs.
-   ```csharp
-   public void Rebind(StringName action, Key key)
-   {
-       var clash = _keyboardMap.FirstOrDefault(kv => kv.Value == key && _remappable.Contains(kv.Key));
-       if (clash.Key != null) _keyboardMap[clash.Key] = _keyboardMap[action];  // swap
-       _keyboardMap[action] = key;
-       Save();
-   }
-   ```
-4. **Apply purely through the bus** (Pattern 1): `_UnhandledKeyInput` reads the dict and re-injects the gameplay action. Nothing edits `InputMap`.
-5. **Persist as plain `string → string` in your own save file** (JSON), never `project.godot`. It travels with the player profile / cloud save and survives game updates. Keyboard values are `Key` enum names (`"E"`); controller values are physical action names (`"controller_face_button_south"`).
-
-**Capture the new binding** from the settings screen: while a row is "listening", grab the next `InputEventKey` (`_UnhandledKeyInput`) or the next *released* physical controller action (`_Input` scanning your physical-action list), call `Rebind`, `SetInputAsHandled()`.
-
-**Gate controller rebinding on the capability flag.** Keyboard is always rebindable. Controller rebinding is allowed only when *you* own remapping — if Steam Input is active it owns remap, so disable the in-game rebinder, show a "Steam Input detected — configure in the Steam overlay" note, and fade the affected icon (`Modulate` alpha ~0.15). Read `Manager.ShouldAllowControllerRebinding` (Pattern 2), not the platform directly.
-
-> **GDScript:** dictionaries are native; `Input.parse_input_event(...)`; persist with `FileAccess`/`JSON` or a `ConfigFile`. `OS`/store detection drives the controller-rebind gate. Same rule: never call `InputMap.action_add_event` for user rebinds — keep it in your dict.
-
----
-
-## Button-prompt glyphs (A/✕, LT/L2, …)
-
-Keep glyph art as **bundled resources keyed by an abstract button** (e.g. `face_button_south → res://.../xbox/a.tres`). Pick the atlas by **controller type**:
-- **No SDK:** detect via `Input.GetJoyName(0)` substring (`"DualSense"`, `"Xbox"`, `"Switch"`, …) → per-platform config object that supplies `FolderPath` + a button→texture map. Swap A/B and X/Y for Nintendo; route "view map" to the touchpad for PlayStation; etc.
-- **With Steam:** Steam reports the *origin* of each action (`TranslateActionOrigin`); map that origin to your abstract button and still load the **same bundled `.tres`**. Only fall back to Steam's own rendered glyph (`GetGlyphSVGForActionOrigin`) for origins you have no art for.
-
-So glyphs don't hard-depend on Steam either — Steam just gives a more accurate *source of truth* for which physical button is bound. Refetch on a `ControllerTypeChanged` signal so the UI re-renders when the player swaps a pad.
-
----
-
-## Touch is a separate modality — and the seam to add it
-
-None of the above gives you touchscreen — a desktop/console input stack like this has **zero** native touch handling. Watch for false positives: `InputEventPanGesture` is the desktop **trackpad/wheel scroll** gesture (usually branched next to `InputEventMouseButton.WheelUp/Down`), and "touchpad" means the **DualShock touchpad button**, not a screen.
-
-If a touch device is present, Godot's default `emulate_mouse_from_touch=true` turns taps into synthetic mouse clicks, so buttons/hover already work — but there's no native multi-touch, drag, or pinch.
-
-To add real touch, **extend the one canonical scroll/drag helper** rather than building a new subsystem — every screen that routes through it gains touch at once:
-```csharp
-public static float GetDragForScrollEvent(InputEvent e)
-{
-    if (e is InputEventMouseButton { ButtonIndex: var b }) return b == MouseButton.WheelUp ? 40f : b == MouseButton.WheelDown ? -40f : 0f;
-    if (e is InputEventPanGesture pan)  return -pan.Delta.Y * 50f;
-    if (e is InputEventScreenDrag drag) return drag.Relative.Y;        // 1-finger kinetic pan
-    return 0f;
-}
-// pinch-zoom: handle InputEventMagnifyGesture (e.Factor) in the zoom screen
-// tap: leave emulate_mouse_from_touch on; only parse raw InputEventScreenTouch where you need gesture semantics
-```
-Rules: keep one helper (don't scatter touch parsing); feed the same `_targetPosition` lerp the mouse path already drives (reuse smoothing, don't invent momentum); gate touch-only UI behind `DisplayServer.IsTouchscreenAvailable()` (not a build flag) so desktop is unaffected; do **not** ship `emulate_touch_from_mouse` — it's a dev aid that fights the mouse/controller paths.
-
-> **GDScript:** `DisplayServer.is_touchscreen_available()`; classes are `InputEventScreenTouch` (`.pressed`, `.position`), `InputEventScreenDrag` (`.relative`, `.velocity`), `InputEventMagnifyGesture` (`.factor`), `InputEventPanGesture` (`.delta`).
-
----
-
-## Suggested node layout
-
-Three focused nodes, not one god-object — split responsibilities deliberately:
-- **InputManager** — owns `_UnhandledKeyInput` (keyboard → semantic) and `_UnhandledInput` (controller raw → semantic); holds the rebind dictionaries; emits `InputRebound`.
-- **ControllerManager** — owns `_Input` (device-mode detection) and `_Process` (poll the active strategy); holds `IsUsingController` + the strategy; emits `ControllerDetected` / `MouseDetected` / `ControllerTypeChanged`.
-- **CursorManager** — listens to those signals; toggles `Input.MouseMode` and the custom cursor.
-
-They can be autoloads or `%`-unique children of your root scene. (`_Process` polling is required for SDK strategies because Steam Input is poll-based, not event-based.)
-
-## Checklist when adding input to a Godot 4 game
-
-- [ ] Gameplay actions defined with **empty events**; physical/hardware actions defined **fully bound**.
-- [ ] Nav actions aliased to engine `ui_*` so focus nav is free.
-- [ ] All raw input normalized to semantic actions via `Input.ParseInputEvent`, captured in `_UnhandledInput`/`_UnhandledKeyInput`. **Fresh event per injection.**
-- [ ] Gamepad reader works with **no SDK**; SDK strategy composes it as a per-frame fallback; only the SDK strategy is constructed.
-- [ ] One `IsUsingController` flag; mutually-exclusive detectors; cursor/focus driven off it; gameplay pipelines NOT gated by it.
-- [ ] Controller focus graph wired (`FocusNeighbor*`, `FocusMode`); `GrabFocus` gated on controller mode + deferred.
-- [ ] Rebinding via a dictionary (swap-on-conflict) persisted to your own save; **no `InputMap` mutation**; controller-rebind gated on the "do we own remap?" flag.
-- [ ] Glyphs are bundled resources keyed by abstract button, atlas chosen by controller type.
-- [ ] Decided explicitly whether touch is in scope; if so, extended the single scroll/drag helper and gated on `IsTouchscreenAvailable()`.
+For the global action and device pipeline, inject with `Input.parse_input_event()`, call
+`Input.flush_buffered_events()`, then await the relevant process frames. For GUI picking and viewport
+coordinates, use `Viewport.push_input()` or a real window; flushing does not replace process frames or
+GUI dispatch. Validate hover, OSK, safe areas, gamepad disconnect, and touch compatibility on windowed
+builds and physical target devices.

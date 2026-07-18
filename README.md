@@ -24,7 +24,7 @@ auto-trigger from their `description` when relevant.
 | `godot-quirks` | Engine-level gotchas for both C# and GDScript (serialization, physics, cameras, container relayout / `offset_transform`, …). |
 | `godot-ui-tscn` | Author UI as `.tscn` scenes + thin scripts; 3-layer styling. |
 | `godot-ui-foundation` | Viewport stretch, HiDPI/Retina scaling, theme taxonomy, variable-font weights. |
-| `godot-input` | Multi-device input architecture (C#/GDScript): a semantic-action normalization bus, Steam Input decoupled behind an always-present Godot fallback (plays without Steam), mouse↔controller device switching, focus-based controller navigation, rebinding **without** mutating `InputMap`, per-controller button glyphs, and the touch seam. |
+| `godot-input` | Godot 4.7 GDScript multi-device input: native touch with emulation isolation, separate device and pointer/navigation state, first-event-safe focus routing, gamepad lifecycle, optional Steam Input fallback, rebinding, glyphs, OSK, and haptics. |
 | `godot-asset-gen` | Generate 2D images (Gemini / gpt-image-2 / Wan, via official APIs or wavespeed.ai) and animated sprite sheets (Seedance / Wan video + loop detection); background removal, grid slicing, budget-based asset planning. |
 | `godot-asset-gen-3d` | Generate 3D assets via Tripo3D or Meshy: image → GLB, humanoid rigging, provider animation libraries, stalled-job resume, and provider-aware usage tracking. |
 | `godot-automatic-qa` | Self-verify your work: a headful screenshot loop (inject a timer, run the project, read the PNG yourself) for visual checks, plus a headless `SceneTree` test script (ASSERT, simulated input) for behavioral checks. |
